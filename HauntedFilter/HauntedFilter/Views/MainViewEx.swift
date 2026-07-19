@@ -1,9 +1,9 @@
 import SwiftUI
 import PhotosUI
 
-/// 主页：导入按钮 + 预设选择 + 滑块 + 预估大小 + 智能提示
-struct MainView: View {
-    @ObservedObject var viewModel: ProcessingViewModel
+/// 主页：扩展版本支持BGM
+struct MainViewEx: View {
+    @ObservedObject var viewModel: ProcessingViewModelEx
     @Binding var showPicker: Bool
     @Binding var navigateToPlayer: Bool
     @Binding var navigateToProgress: Bool
@@ -23,11 +23,17 @@ struct MainView: View {
                 // 强度滑块
                 intensitySection
 
+                // BGM设置区（新增）
+                bgmSection
+
                 // 预计输出大小
                 estimatedSizeSection
 
                 // 过度压缩提示（非打断式）
                 compressionWarningHint
+
+                // BGM时长信息
+                bgmDurationInfoSection
 
                 // 处理按钮
                 processButton
@@ -58,6 +64,12 @@ struct MainView: View {
         .onChange(of: viewModel.selectedPreset) { _ in
             updateWarning()
         }
+        .onChange(of: viewModel.selectedBGM) { _ in
+            viewModel.updateBGMDurationInfo()
+        }
+        .onChange(of: viewModel.isBGMEnabled) { _ in
+            viewModel.recalculateEstimation()
+        }
     }
 
     // MARK: - 更新提示状态
@@ -85,7 +97,7 @@ struct MainView: View {
                 .fontWeight(.bold)
                 .foregroundColor(.white)
 
-            Text("导入视频 → 选择预设 → 一键生成复古失真质感")
+            Text("导入视频 → 添加BGM → 生成复古失真质感")
                 .font(.caption)
                 .foregroundColor(.gray)
         }
@@ -222,6 +234,43 @@ struct MainView: View {
         .cornerRadius(12)
     }
 
+    // MARK: - BGM设置区
+
+    private var bgmSection: some View {
+        BGMSelectorView(
+            selectedBGM: $viewModel.selectedBGM,
+            isBGMEnabled: $viewModel.isBGMEnabled,
+            bgmVolume: $viewModel.bgmVolume,
+            isLoading: $viewModel.bgmLoading
+        )
+    }
+
+    // MARK: - BGM时长信息
+
+    @ViewBuilder
+    private var bgmDurationInfoSection: some View {
+        if viewModel.sourceVideoURL != nil && viewModel.isBGMEnabled && !viewModel.bgmDurationInfo.isEmpty {
+            HStack(spacing: 10) {
+                Image(systemName: "info.circle.fill")
+                    .foregroundColor(.blue.opacity(0.7))
+                    .font(.caption)
+
+                Text(viewModel.bgmDurationInfo)
+                    .font(.caption2)
+                    .foregroundColor(.white.opacity(0.9))
+                    .lineLimit(2)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(Color.blue.opacity(0.1))
+            )
+            .transition(.opacity)
+        }
+    }
+
     // MARK: - 预计输出大小
 
     @ViewBuilder
@@ -305,8 +354,13 @@ struct MainView: View {
             viewModel.startProcessing()
         } label: {
             HStack {
-                Image(systemName: "film.badge.magnifyingglass")
-                Text("开始处理")
+                if viewModel.isBGMEnabled && viewModel.bgmVolume > 0 {
+                    Image(systemName: "music.note.tv")
+                } else {
+                    Image(systemName: "film.badge.magnifyingglass")
+                }
+
+                Text("开始处理" + (viewModel.isBGMEnabled && viewModel.bgmVolume > 0 ? "（带BGM）" : ""))
                     .fontWeight(.semibold)
             }
             .foregroundColor(.white)
@@ -324,11 +378,15 @@ struct MainView: View {
     }
 }
 
-#Preview {
-    MainView(
-        viewModel: ProcessingViewModel(),
-        showPicker: .constant(false),
-        navigateToPlayer: .constant(false),
-        navigateToProgress: .constant(false)
-    )
+#if DEBUG
+struct MainViewEx_Previews: PreviewProvider {
+    static var previews: some View {
+        MainViewEx(
+            viewModel: ProcessingViewModelEx(),
+            showPicker: .constant(false),
+            navigateToPlayer: .constant(false),
+            navigateToProgress: .constant(false)
+        )
+    }
 }
+#endif

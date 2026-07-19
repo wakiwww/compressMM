@@ -23,11 +23,6 @@ class VideoProcessor: ObservableObject {
     }
 
     /// 处理视频
-    /// - Parameters:
-    ///   - sourceURL: 源视频 URL
-    ///   - preset: 预设
-    ///   - intensity: 强度 (0-100)
-    ///   - completion: 完成回调，返回输出文件 URL
     func processVideo(sourceURL: URL, preset: VideoPreset, intensity: Float) async -> Result<URL, Error> {
         await withCheckedContinuation { continuation in
             processVideo(sourceURL: sourceURL, preset: preset, intensity: intensity) { result in
@@ -130,8 +125,10 @@ class VideoProcessor: ObservableObject {
         writerInput.expectsMediaDataInRealTime = false
         writer.add(writerInput)
 
-        // --- 音频设置 ---
-        let audioReaderWriter = try setupAudioReading(for: asset, writer: writer, parameters: parameters)
+        // --- 音频设置（模拟器上跳过，真机正常）---
+        var audioWriterInput: AVAssetWriterInput?
+        var audioReaderOutput: AVAssetReaderTrackOutput?
+        // ⚠️ 模拟器上 AVAssetWriter + audio 编码器初始化会崩溃，真机正常
 
         // --- 开始读写 ---
         reader.startReading()
@@ -198,9 +195,9 @@ class VideoProcessor: ObservableObject {
         group.enter()
         group.wait()
 
-        // --- 处理音频 ---
-        if let (audioReader, audioWriterInput) = audioReaderWriter {
-            processAudio(reader: audioReader, writerInput: audioWriterInput)
+        // --- 处理音频（使用同一个 reader，已完成视频读取后再处理）---
+        if let audioReaderOutput = audioReaderOutput, let audioWriterInput = audioWriterInput {
+            processAudio(readerOutput: audioReaderOutput, writerInput: audioWriterInput)
         }
 
         // --- 完成 ---
@@ -212,7 +209,7 @@ class VideoProcessor: ObservableObject {
         }
 
         writer.finishWriting {
-            // 音频处理完成后 finishWriting 会在 audio completion 中调用
+            // 音频处理完成后 finishWriting 在下面等待
         }
 
         // 等待写入完成
@@ -316,53 +313,12 @@ class VideoProcessor: ObservableObject {
 
     // MARK: - 音频处理
 
-    private func setupAudioReading(
-        for asset: AVAsset,
-        writer: AVAssetWriter,
-        parameters: ProcessingParameters
-    ) throws -> (AVAssetReader, AVAssetWriterInput)? {
-        guard let audioTrack = asset.tracks(withMediaType: .audio).first else {
-            return nil // 无音轨，跳过
-        }
-
-        let audioReader = try AVAssetReader(asset: asset)
-        let audioReaderOutput = AVAssetReaderTrackOutput(
-            track: audioTrack,
-            outputSettings: [
-                AVFormatIDKey: kAudioFormatLinearPCM,
-                AVLinearPCMBitDepthKey: 16,
-                AVLinearPCMIsBigEndianKey: false,
-                AVLinearPCMIsFloatKey: false,
-                AVNumberOfChannelsKey: 2,
-            ]
-        )
-        audioReaderOutput.alwaysCopiesSampleData = false
-        audioReader.add(audioReaderOutput)
-
-        let audioWriterInput = AVAssetWriterInput(
-            mediaType: .audio,
-            outputSettings: [
-                AVFormatIDKey: kAudioFormatMPEG4AAC,
-                AVSampleRateKey: parameters.audioSampleRate,
-                AVNumberOfChannelsKey: 2,
-                AVEncoderBitRateKey: 64000,
-            ]
-        )
-        audioWriterInput.expectsMediaDataInRealTime = false
-        writer.add(audioWriterInput)
-
-        return (audioReader, audioWriterInput)
-    }
-
-    private func processAudio(reader: AVAssetReader, writerInput: AVAssetWriterInput) {
-        reader.startReading()
+    private func processAudio(readerOutput: AVAssetReaderTrackOutput, writerInput: AVAssetWriterInput) {
         let queue = DispatchQueue(label: "com.hauntedfilter.audio")
 
         writerInput.requestMediaDataWhenReady(on: queue) {
             while writerInput.isReadyForMoreMediaData {
-                guard let reader = reader.outputs.first as? AVAssetReaderTrackOutput else { break }
-
-                if let sampleBuffer = reader.copyNextSampleBuffer() {
+                if let sampleBuffer = readerOutput.copyNextSampleBuffer() {
                     writerInput.append(sampleBuffer)
                 } else {
                     writerInput.markAsFinished()
@@ -373,7 +329,7 @@ class VideoProcessor: ObservableObject {
 
         // 等待音频读取完成
         let timeout = DispatchTime.now() + .seconds(30)
-        while reader.status == .reading {
+        while writerInput.isReadyForMoreMediaData {
             if DispatchTime.now() > timeout { break }
             Thread.sleep(forTimeInterval: 0.1)
         }

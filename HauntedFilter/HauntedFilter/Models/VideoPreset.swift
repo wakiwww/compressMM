@@ -32,62 +32,62 @@ enum VideoPreset: String, CaseIterable, Identifiable {
         }
     }
 
-    /// 低强度 (s=20) 参数
-    var lowParameters: ProcessingParameters {
+    /// 基线参数（新版 0%，≈ 旧版 50% 强度——轻微效果起点）
+    var baselineParameters: ProcessingParameters {
         switch self {
         case .oldPhone:
             return ProcessingParameters(
-                targetWidth: 320,
-                targetFrameRate: 20,
-                videoBitrate: 800_000,
-                saturation: 0.9,
-                contrast: 1.05,
-                brightness: 0,
-                noiseIntensity: 0.05,
-                chromaShiftPixels: 0,
-                scanlineAlpha: 0,
-                audioLowFreq: 300,
-                audioHighFreq: 3000,
-                audioSampleRate: 22050,
-                backgroundNoiseLevel: 0
-            )
-        case .vhs:
-            return ProcessingParameters(
-                targetWidth: 360,
+                targetWidth: 480,
                 targetFrameRate: 24,
-                videoBitrate: 1_000_000,
-                saturation: 0.8,
-                contrast: 1.1,
+                videoBitrate: 2_000_000,
+                saturation: 1.0,
+                contrast: 1.0,
                 brightness: 0,
                 noiseIntensity: 0.02,
-                chromaShiftPixels: 1,
-                scanlineAlpha: 0.1,
-                audioLowFreq: 100,
-                audioHighFreq: 6000,
-                audioSampleRate: 44100,
-                backgroundNoiseLevel: 0.05
-            )
-        case .cctv:
-            return ProcessingParameters(
-                targetWidth: 320,
-                targetFrameRate: 15,
-                videoBitrate: 500_000,
-                saturation: 0.3,
-                contrast: 1.2,
-                brightness: -0.05,
-                noiseIntensity: 0.03,
                 chromaShiftPixels: 0,
                 scanlineAlpha: 0,
                 audioLowFreq: 200,
                 audioHighFreq: 4000,
-                audioSampleRate: 16000,
+                audioSampleRate: 44100,
+                backgroundNoiseLevel: 0
+            )
+        case .vhs:
+            return ProcessingParameters(
+                targetWidth: 480,
+                targetFrameRate: 24,
+                videoBitrate: 2_000_000,
+                saturation: 1.0,
+                contrast: 1.0,
+                brightness: 0,
+                noiseIntensity: 0.01,
+                chromaShiftPixels: 0,
+                scanlineAlpha: 0,
+                audioLowFreq: 200,
+                audioHighFreq: 4000,
+                audioSampleRate: 44100,
+                backgroundNoiseLevel: 0
+            )
+        case .cctv:
+            return ProcessingParameters(
+                targetWidth: 480,
+                targetFrameRate: 24,
+                videoBitrate: 2_000_000,
+                saturation: 1.0,
+                contrast: 1.0,
+                brightness: 0,
+                noiseIntensity: 0.01,
+                chromaShiftPixels: 0,
+                scanlineAlpha: 0,
+                audioLowFreq: 200,
+                audioHighFreq: 4000,
+                audioSampleRate: 44100,
                 backgroundNoiseLevel: 0
             )
         }
     }
 
-    /// 高强度 (s=90) 参数
-    var highParameters: ProcessingParameters {
+    /// 低强度参数（新版 t=0.0，≈ 旧版全力 90%）
+    var lowParameters: ProcessingParameters {
         switch self {
         case .oldPhone:
             return ProcessingParameters(
@@ -140,11 +140,74 @@ enum VideoPreset: String, CaseIterable, Identifiable {
         }
     }
 
-    /// 根据强度获取插值后的参数
+    /// 高强度参数（新版 t=1.0 — 像素块级极致阴间）
+    var highParameters: ProcessingParameters {
+        switch self {
+        case .oldPhone:
+            return ProcessingParameters(
+                targetWidth: 60,
+                targetFrameRate: 3,
+                videoBitrate: 30_000,
+                saturation: 0.05,
+                contrast: 1.8,
+                brightness: -0.15,
+                noiseIntensity: 0.8,
+                chromaShiftPixels: 0,
+                scanlineAlpha: 0,
+                audioLowFreq: 300,
+                audioHighFreq: 2400,
+                audioSampleRate: 4000,
+                backgroundNoiseLevel: 0
+            )
+        case .vhs:
+            return ProcessingParameters(
+                targetWidth: 60,
+                targetFrameRate: 4,
+                videoBitrate: 30_000,
+                saturation: 0.08,
+                contrast: 1.6,
+                brightness: -0.1,
+                noiseIntensity: 0.6,
+                chromaShiftPixels: 18,
+                scanlineAlpha: 0.7,
+                audioLowFreq: 80,
+                audioHighFreq: 4000,
+                audioSampleRate: 8000,
+                backgroundNoiseLevel: 0.5
+            )
+        case .cctv:
+            return ProcessingParameters(
+                targetWidth: 60,
+                targetFrameRate: 2,
+                videoBitrate: 20_000,
+                saturation: 0.0,
+                contrast: 2.0,
+                brightness: -0.2,
+                noiseIntensity: 0.7,
+                chromaShiftPixels: 0,
+                scanlineAlpha: 0,
+                audioLowFreq: 100,
+                audioHighFreq: 3000,
+                audioSampleRate: 4000,
+                backgroundNoiseLevel: 0
+            )
+        }
+    }
+
+    /// 根据强度获取插值后的参数（新版映射）
+    /// - intensity 0-50: baseline → low （轻微到旧版全力）
+    /// - intensity 50-100: low → high（旧版全力到像素块极致）
     func parameters(for intensity: Float) -> ProcessingParameters {
-        let clamped = max(20, min(90, intensity))
-        let t = (clamped - 20) / 70  // 0.0 ~ 1.0
-        return lowParameters.interpolated(towards: highParameters, t: t)
+        let clamped = max(0, min(100, intensity))
+        if clamped <= 50 {
+            // 0-50: baseline → low
+            let t = clamped / 50.0
+            return baselineParameters.interpolated(towards: lowParameters, t: t)
+        } else {
+            // 51-100: low → high
+            let t = (clamped - 50) / 50.0
+            return lowParameters.interpolated(towards: highParameters, t: t)
+        }
     }
 
     /// 预设特有的启用标志

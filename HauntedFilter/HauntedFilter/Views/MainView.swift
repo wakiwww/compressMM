@@ -1,7 +1,7 @@
 import SwiftUI
 import PhotosUI
 
-/// 主页：导入按钮 + 预设选择 + 滑块
+/// 主页：导入按钮 + 预设选择 + 滑块 + 预估大小 + 智能提示
 struct MainView: View {
     @ObservedObject var viewModel: ProcessingViewModel
     @Binding var showPicker: Bool
@@ -22,6 +22,12 @@ struct MainView: View {
 
                 // 强度滑块
                 intensitySection
+
+                // 预计输出大小
+                estimatedSizeSection
+
+                // 过度压缩提示（非打断式）
+                compressionWarningHint
 
                 // 处理按钮
                 processButton
@@ -45,6 +51,24 @@ struct MainView: View {
             if newValue != nil {
                 navigateToPlayer = true
             }
+        }
+        .onChange(of: viewModel.intensity) { _ in
+            updateWarning()
+        }
+        .onChange(of: viewModel.selectedPreset) { _ in
+            updateWarning()
+        }
+    }
+
+    // MARK: - 更新提示状态
+
+    private func updateWarning() {
+        viewModel.recalculateEstimation()
+        if viewModel.checkOverCompression() {
+            viewModel.alertMessage = viewModel.generateAlertMessage()
+            viewModel.showOverCompressionAlert = true
+        } else {
+            viewModel.showOverCompressionAlert = false
         }
     }
 
@@ -80,6 +104,9 @@ struct MainView: View {
                     Text("视频已导入")
                         .foregroundColor(.white)
                     Spacer()
+                    Text(viewModel.sourceFileSizeFormatted)
+                        .font(.caption)
+                        .foregroundColor(.gray)
                     Button("重新选择") {
                         viewModel.reset()
                         showPicker = true
@@ -161,11 +188,11 @@ struct MainView: View {
                 .tint(.red.opacity(0.7))
 
             HStack {
-                Text("轻微")
+                Text("原片")
                     .font(.caption)
                     .foregroundColor(.gray)
                 Spacer()
-                Text("阴间")
+                Text("像素块")
                     .font(.caption)
                     .foregroundColor(.red.opacity(0.6))
             }
@@ -173,6 +200,82 @@ struct MainView: View {
         .padding()
         .background(Color.gray.opacity(0.15))
         .cornerRadius(12)
+    }
+
+    // MARK: - 预计输出大小
+
+    @ViewBuilder
+    private var estimatedSizeSection: some View {
+        if viewModel.sourceVideoURL != nil {
+            VStack(spacing: 8) {
+                HStack {
+                    Image(systemName: "arrow.down.doc")
+                        .foregroundColor(.orange)
+                    Text("预计输出大小")
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                    Spacer()
+                    Text(viewModel.estimatedOutputSize)
+                        .font(.subheadline)
+                        .fontWeight(.bold)
+                        .foregroundColor(.orange)
+                }
+
+                if viewModel.compressionRatio > 0 {
+                    // 压缩进度条
+                    ProgressView(
+                        value: Double(viewModel.compressionRatio),
+                        total: 1.0
+                    )
+                    .tint(viewModel.compressionRatio < 0.1 ? .red : .orange)
+
+                    HStack {
+                        Text("原始: \(viewModel.sourceFileSizeFormatted)")
+                            .font(.caption2)
+                            .foregroundColor(.gray)
+                        Spacer()
+                        Text("\(Int((1 - viewModel.compressionRatio) * 100))% 压缩")
+                            .font(.caption2)
+                            .foregroundColor(
+                                viewModel.compressionRatio < 0.1 ? .red : .gray
+                            )
+                    }
+                }
+            }
+            .padding()
+            .background(Color.gray.opacity(0.15))
+            .cornerRadius(12)
+        }
+    }
+
+    // MARK: - 过度压缩提示（不打断操作）
+
+    @ViewBuilder
+    private var compressionWarningHint: some View {
+        if viewModel.sourceVideoURL != nil && viewModel.showOverCompressionAlert {
+            HStack(spacing: 10) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundColor(.yellow)
+                    .font(.caption)
+
+                Text(viewModel.alertMessage)
+                    .font(.caption2)
+                    .foregroundColor(.white.opacity(0.9))
+                    .lineLimit(3)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(Color.red.opacity(0.2))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(Color.yellow.opacity(0.4), lineWidth: 0.5)
+                    )
+            )
+            .transition(.opacity.combined(with: .move(edge: .bottom)))
+        }
     }
 
     // MARK: - 处理按钮

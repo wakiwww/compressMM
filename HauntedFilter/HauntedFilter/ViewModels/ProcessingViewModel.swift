@@ -11,10 +11,22 @@ class ProcessingViewModel: ObservableObject {
     @Published var outputURL: URL?
     @Published var isProcessing = false
     @Published var progress: Double = 0
-    @Published var selectedPreset: VideoPreset = .oldPhone
-    @Published var intensity: Float = 50
+    @Published var selectedPreset: VideoPreset = .oldPhone {
+        didSet { recalculateEstimation() }
+    }
+    @Published var intensity: Float = 50 {
+        didSet { recalculateEstimation() }
+    }
     @Published var errorMessage: String?
     @Published var showError = false
+
+    // MARK: - 预估大小 & 警告
+    @Published var estimatedOutputSize: String = "未知"
+    @Published var showOverCompressionAlert = false
+    @Published var compressionRatio: Float = 0
+    @Published var sourceFileSize: UInt64 = 0
+    @Published var sourceFileSizeFormatted: String = ""
+    @Published var alertMessage: String = ""
 
     private let processor = VideoProcessor()
 
@@ -65,5 +77,97 @@ class ProcessingViewModel: ObservableObject {
         isProcessing = false
         progress = 0
         errorMessage = nil
+        estimatedOutputSize = "未知"
+        compressionRatio = 0
+        sourceFileSize = 0
+        sourceFileSizeFormatted = ""
+    }
+
+    /// 导入视频后更新源文件信息
+    func didSelectVideo(url: URL) {
+        sourceVideoURL = url
+        let attrs = try? FileManager.default.attributesOfItem(atPath: url.path)
+        sourceFileSize = attrs?[.size] as? UInt64 ?? 0
+        sourceFileSizeFormatted = formatFileSize(sourceFileSize)
+        recalculateEstimation()
+    }
+
+    // MARK: - 预估大小
+
+    func recalculateEstimation() {
+        guard let url = sourceVideoURL else {
+            estimatedOutputSize = "未知"
+            return
+        }
+
+        let asset = AVAsset(url: url)
+        let duration = asset.duration.seconds
+        guard duration > 0, !duration.isNaN else {
+            estimatedOutputSize = "无法估算"
+            return
+        }
+
+        let params = selectedPreset.parameters(for: intensity)
+
+        // 视频部分: bitrate(bps) / 8 * 时长 * 校正因子
+        let videoBytes = Double(params.videoBitrate) / 8.0 * duration * 0.9
+
+        // 音频部分: AAC 编码近似
+        let audioBytes = params.audioSampleRate * 2.0 * duration * 0.3
+
+        let totalBytes = videoBytes + audioBytes
+        estimatedOutputSize = formatFileSize(UInt64(totalBytes))
+
+        // 压缩比
+        guard sourceFileSize > 0 else {
+            compressionRatio = 0
+            return
+        }
+        compressionRatio = Float(totalBytes) / Float(sourceFileSize)
+    }
+
+    /// 检查是否过度压缩（调用方在 UI 层判断）
+    func checkOverCompression() -> Bool {
+        guard sourceFileSize > 0, compressionRatio > 0 else { return false }
+
+        // 动态阈值：根据视频时长调整
+        // 短视频(≤10s)更宽容: 5%, 长视频(>60s)更保守: 12%
+        guard let url = sourceVideoURL else { return false }
+        let asset = AVAsset(url: url)
+        let duration = asset.duration.seconds
+        let threshold: Float
+        if duration <= 10 {
+            threshold = 0.05
+        } else if duration >= 60 {
+            threshold = 0.12
+        } else {
+            // 线性插值 10s→0.05, 60s→0.12
+            threshold = 0.05 + Float((duration - 10) / 50) * 0.07
+        }
+
+        return compressionRatio < threshold
+    }
+
+    /// 生成警告文案
+    func generateAlertMessage() -> String {
+        let ratioPercent = Int((1 - compressionRatio) * 100)
+        return """
+        调这么高你要把视频压没吗？
+        原始大小：\(sourceFileSizeFormatted)
+        预估大小：\(estimatedOutputSize)
+        压缩率：\(ratioPercent)%
+        """
+    }
+
+    // MARK: - Helpers
+
+    func formatFileSize(_ bytes: UInt64) -> String {
+        if bytes < 1024 { return "\(bytes) B" }
+        if bytes < 1024 * 1024 { return String(format: "%.1f KB", Double(bytes) / 1024) }
+        return String(format: "%.1f MB", Double(bytes) / (1024 * 1024))
+    }
+
+    func formatFileSize(_ bytes: Double) -> String {
+        formatFileSize(UInt64(bytes))
     }
 }

@@ -34,7 +34,7 @@ struct ContentView: View {
                 Task {
                     if let data = try? await newItem.loadTransferable(type: Data.self),
                        let url = saveVideoDataToTemp(data) {
-                        viewModel.sourceVideoURL = url
+                        viewModel.didSelectVideo(url: url)
                     }
                 }
             }

@@ -31,14 +31,14 @@ struct FilterChainBuilder {
                 scaleFilter.setValue(scale, forKey: kCIInputScaleKey)
                 scaleFilter.setValue(1.0, forKey: kCIInputAspectRatioKey)
                 if let downscaled = scaleFilter.outputImage {
-                    // 放大回原尺寸（使用 CILanczosScaleTransform 放大，最近邻模式无法直接设置）
+                    // 放大回原尺寸
                     let upScale = sourceSize.width / CGFloat(parameters.targetWidth)
                     if let upFilter = CIFilter(name: "CILanczosScaleTransform") {
                         upFilter.setValue(downscaled, forKey: kCIInputImageKey)
                         upFilter.setValue(upScale, forKey: kCIInputScaleKey)
                         upFilter.setValue(1.0, forKey: kCIInputAspectRatioKey)
                         if let upscaled = upFilter.outputImage {
-                            image = upscaled
+                            image = upscaled.cropped(to: CGRect(origin: .zero, size: sourceSize))
                         }
                     }
                 }
@@ -99,10 +99,7 @@ struct FilterChainBuilder {
             }
         }
 
-        // 7. 时间戳 - 由 VideoProcessor 在外部通过 AVVideoCompositionCoreAnimationTool 处理
-        // 这里不处理，保持纯 CIFilter 链
-
-        return image
+        return image.cropped(to: CGRect(origin: .zero, size: sourceSize))
     }
 
     // MARK: - 色彩溢出
@@ -164,29 +161,35 @@ struct FilterChainBuilder {
         return addFilter2?.outputImage ?? image
     }
 
-    // MARK: - 噪点颗粒感
+    // MARK: - 噪点颗粒感（优化版本：避免高频创建无限 Extent 导致 GPU 内存爆满）
+
+    private static var sharedNoiseImage: CIImage? = {
+        if let randomGenerator = CIFilter(name: "CIRandomGenerator"),
+           let output = randomGenerator.outputImage {
+            return output.cropped(to: CGRect(x: 0, y: 0, width: 2048, height: 2048))
+        }
+        return nil
+    }()
 
     private static func applyNoise(to image: CIImage, intensity: Float) -> CIImage {
-        guard let randomGenerator = CIFilter(name: "CIRandomGenerator") else {
-            return image
-        }
-        let noiseImage = randomGenerator.outputImage?.cropped(to: image.extent)
+        guard let noiseBase = sharedNoiseImage else { return image }
+        let targetExtent = image.extent
+        let noiseTile = noiseBase.cropped(to: targetExtent)
 
         // 将噪点缩放到合适的强度
-        let coloredNoise = noiseImage?.applyingFilter("CIColorMatrix", parameters: [
-            "inputRVector": CIVector(x: 0, y: 0, z: 0, w: CGFloat(intensity * 0.5)),
-            "inputGVector": CIVector(x: 0, y: 0, z: 0, w: CGFloat(intensity * 0.5)),
-            "inputBVector": CIVector(x: 0, y: 0, z: 0, w: CGFloat(intensity * 0.5)),
-            "inputAVector": CIVector(x: 0, y: 0, z: 0, w: CGFloat(intensity))
+        let coloredNoise = noiseTile.applyingFilter("CIColorMatrix", parameters: [
+            "inputRVector": CIVector(x: 0, y: 0, z: 0, w: CGFloat(intensity * 0.3)),
+            "inputGVector": CIVector(x: 0, y: 0, z: 0, w: CGFloat(intensity * 0.3)),
+            "inputBVector": CIVector(x: 0, y: 0, z: 0, w: CGFloat(intensity * 0.3)),
+            "inputAVector": CIVector(x: 0, y: 0, z: 0, w: CGFloat(intensity * 0.5))
         ])
 
-        guard let noise = coloredNoise else { return image }
-
-        // 使用 CIColorBlendMode 或 CISourceOverCompositing
-        if let blend = CIFilter(name: "CIColorBlendMode") {
-            blend.setValue(noise, forKey: kCIInputImageKey)
+        if let blend = CIFilter(name: "CISourceOverCompositing") {
+            blend.setValue(coloredNoise, forKey: kCIInputImageKey)
             blend.setValue(image, forKey: kCIInputBackgroundImageKey)
-            return blend.outputImage ?? image
+            if let output = blend.outputImage {
+                return output.cropped(to: targetExtent)
+            }
         }
 
         return image

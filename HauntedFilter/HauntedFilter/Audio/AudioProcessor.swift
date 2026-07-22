@@ -10,6 +10,7 @@ class AudioProcessor {
     ///   - audioTrack: 源音频轨道
     ///   - parameters: 处理参数
     ///   - outputURL: 输出音频文件 URL
+    @available(iOS 13.0, *)
     func processAudioTrack(
         _ audioTrack: AVAssetTrack,
         parameters: ProcessingParameters,
@@ -53,29 +54,39 @@ class AudioProcessor {
         writer.startWriting()
         writer.startSession(atSourceTime: .zero)
 
-        // 读取音频样本并写入（简化：直接通过，后续可加带通滤波处理）
-        let queue = DispatchQueue(label: "com.hauntedfilter.audio.process")
-        let group = DispatchGroup()
-        group.enter()
+        // 读取音频样本并写入
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            let queue = DispatchQueue(label: "com.hauntedfilter.audio.process")
 
-        writerInput.requestMediaDataWhenReady(on: queue) {
-            while writerInput.isReadyForMoreMediaData {
-                if let sampleBuffer = readerOutput.copyNextSampleBuffer() {
-                    // 应用带通滤波（可选：通过 AudioConverter 或 vDSP 处理 PCM 数据）
-                    writerInput.append(sampleBuffer)
-                } else {
-                    writerInput.markAsFinished()
-                    group.leave()
-                    break
+            writerInput.requestMediaDataWhenReady(on: queue) { [weak writerInput, weak readerOutput, weak writer] in
+                guard let writerInput = writerInput, let readerOutput = readerOutput else {
+                    continuation.resume(throwing: ProcessingError.unknown)
+                    return
                 }
-            }
-        }
 
-        group.wait()
+                while writerInput.isReadyForMoreMediaData {
+                    if let sampleBuffer = readerOutput.copyNextSampleBuffer() {
+                        writerInput.append(sampleBuffer)
+                    } else {
+                        // 所有音频帧已读完：先标记输入结束，再由 writer 收尾
+                        writerInput.markAsFinished()
 
-        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
-            writer.finishWriting {
-                continuation.resume()
+                        guard let writer = writer else {
+                            continuation.resume(throwing: ProcessingError.unknown)
+                            return
+                        }
+                        // finishWriting 必须在 requestMediaDataWhenReady 回调之外才安全，
+                        // 这里已经是独立 DispatchQueue，符合 AVFoundation 要求
+                        writer.finishWriting {
+                            if writer.status == .completed {
+                                continuation.resume()
+                            } else {
+                                continuation.resume(throwing: writer.error ?? ProcessingError.unknown)
+                            }
+                        }
+                        return
+                    }
+                }
             }
         }
     }

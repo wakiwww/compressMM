@@ -100,30 +100,46 @@ class ProcessingViewModel: ObservableObject {
             return
         }
 
-        let asset = AVAsset(url: url)
-        let duration = asset.duration.seconds
-        guard duration > 0, !duration.isNaN else {
-            estimatedOutputSize = "无法估算"
-            return
+        let asset = AVURLAsset(url: url)
+
+        // 异步加载duration
+        Task {
+            do {
+                let duration = try await asset.load(.duration).seconds
+                guard duration > 0, !duration.isNaN else {
+                    await MainActor.run {
+                        estimatedOutputSize = "无法估算"
+                    }
+                    return
+                }
+
+                let params = selectedPreset.parameters(for: intensity)
+
+                // 视频部分: bitrate(bps) / 8 * 时长 * 校正因子
+                let videoBytes = Double(params.videoBitrate) / 8.0 * duration * 0.9
+
+                // 音频部分: AAC 编码近似
+                let audioBytes = params.audioSampleRate * 2.0 * duration * 0.3
+
+                let totalBytes = videoBytes + audioBytes
+
+                await MainActor.run {
+                    estimatedOutputSize = formatFileSize(UInt64(totalBytes))
+
+                    // 压缩比
+                    guard sourceFileSize > 0 else {
+                        compressionRatio = 0
+                        return
+                    }
+                    compressionRatio = Float(totalBytes) / Float(sourceFileSize)
+                }
+            } catch {
+                await MainActor.run {
+                    estimatedOutputSize = "无法估算"
+                    print("无法加载duration: \(error)")
+                }
+            }
         }
-
-        let params = selectedPreset.parameters(for: intensity)
-
-        // 视频部分: bitrate(bps) / 8 * 时长 * 校正因子
-        let videoBytes = Double(params.videoBitrate) / 8.0 * duration * 0.9
-
-        // 音频部分: AAC 编码近似
-        let audioBytes = params.audioSampleRate * 2.0 * duration * 0.3
-
-        let totalBytes = videoBytes + audioBytes
-        estimatedOutputSize = formatFileSize(UInt64(totalBytes))
-
-        // 压缩比
-        guard sourceFileSize > 0 else {
-            compressionRatio = 0
-            return
-        }
-        compressionRatio = Float(totalBytes) / Float(sourceFileSize)
     }
 
     /// 检查是否过度压缩（调用方在 UI 层判断）

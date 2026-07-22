@@ -88,7 +88,7 @@ enum VideoPreset: String, CaseIterable, Identifiable {
                 targetWidth: 120, targetFrameRate: 6, videoBitrate: 80_000,
                 saturation: 0.2, contrast: 1.2, brightness: -0.05,
                 noiseIntensity: 0.35, chromaShiftPixels: 0, scanlineAlpha: 0,
-                audioLowFreq: 300, audioHighFreq: 3000, audioSampleRate: 6000, backgroundNoiseLevel: 0
+                audioLowFreq: 300, audioHighFreq: 3000, audioSampleRate: 8000, backgroundNoiseLevel: 0
             )
         case .vhs:
             return ProcessingParameters(
@@ -123,7 +123,7 @@ enum VideoPreset: String, CaseIterable, Identifiable {
                 targetWidth: 60, targetFrameRate: 3, videoBitrate: 30_000,
                 saturation: 0.05, contrast: 1.8, brightness: -0.15,
                 noiseIntensity: 0.8, chromaShiftPixels: 0, scanlineAlpha: 0,
-                audioLowFreq: 300, audioHighFreq: 2400, audioSampleRate: 4000, backgroundNoiseLevel: 0
+                audioLowFreq: 300, audioHighFreq: 2400, audioSampleRate: 8000, backgroundNoiseLevel: 0
             )
         case .vhs:
             return ProcessingParameters(
@@ -137,7 +137,7 @@ enum VideoPreset: String, CaseIterable, Identifiable {
                 targetWidth: 60, targetFrameRate: 2, videoBitrate: 20_000,
                 saturation: 0.0, contrast: 2.0, brightness: -0.2,
                 noiseIntensity: 0.7, chromaShiftPixels: 0, scanlineAlpha: 0,
-                audioLowFreq: 100, audioHighFreq: 3000, audioSampleRate: 4000, backgroundNoiseLevel: 0
+                audioLowFreq: 100, audioHighFreq: 3000, audioSampleRate: 8000, backgroundNoiseLevel: 0
             )
         case .qubuHuazhen:
             // 极致压缩但不伤色彩，保留诺基亚时代的特征

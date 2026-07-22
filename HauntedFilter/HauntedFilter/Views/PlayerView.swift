@@ -12,7 +12,7 @@ struct PlayerView: View {
         VStack(spacing: 16) {
             // 播放器
             VideoPlayer(player: AVPlayer(url: videoURL))
-                .frame(height: UIScreen.main.bounds.height * 0.5)
+                .frame(maxHeight: 400)
                 .cornerRadius(12)
                 .overlay(
                     RoundedRectangle(cornerRadius: 12)

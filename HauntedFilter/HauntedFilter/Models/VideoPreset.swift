@@ -30,7 +30,7 @@ enum VideoPreset: String, CaseIterable, Identifiable {
     var iconName: String {
         switch self {
         case .oldPhone: return "phone.fill"
-        case .vhs:      return "videotape.fill"
+        case .vhs:      return "film.stack.fill"
         case .cctv:     return "video.fill.badge.ellipsis"
         case .qubuHuazhen: return "gearshape.2.fill"
         }

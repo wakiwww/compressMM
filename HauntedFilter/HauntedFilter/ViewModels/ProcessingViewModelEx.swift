@@ -49,6 +49,9 @@ class ProcessingViewModelEx: ObservableObject {
     @Published var sourceFileSizeFormatted: String = ""
     @Published var alertMessage: String = ""
 
+    /// 缓存视频时长（异步加载，供 checkOverCompression 同步使用）
+    private var cachedDuration: TimeInterval = 0
+
     private let processor = VideoProcessor()
     private let bgmManager = BGMManager.shared
 
@@ -175,6 +178,13 @@ class ProcessingViewModelEx: ObservableObject {
         let attrs = try? FileManager.default.attributesOfItem(atPath: url.path)
         sourceFileSize = attrs?[.size] as? UInt64 ?? 0
         sourceFileSizeFormatted = formatFileSize(sourceFileSize)
+        // 异步加载视频时长并缓存，避免在主线程同步阻塞
+        Task {
+            if let duration = try? await AVURLAsset(url: url).load(.duration).seconds,
+               duration > 0 {
+                await MainActor.run { self.cachedDuration = duration }
+            }
+        }
         recalculateEstimation()
         updateBGMDurationInfo()
     }
@@ -230,42 +240,43 @@ class ProcessingViewModelEx: ObservableObject {
             return
         }
 
-        let asset = AVAsset(url: url)
-        let duration = asset.duration.seconds
-        guard duration > 0, !duration.isNaN else {
-            estimatedOutputSize = "无法估算"
-            return
+        let asset = AVURLAsset(url: url)
+        // 使用 async/await 异步加载，避免在主线程同步阻塞（iOS 16+ 强制要求）
+        Task {
+            do {
+                let duration = try await asset.load(.duration).seconds
+                guard duration > 0, !duration.isNaN else {
+                    await MainActor.run { estimatedOutputSize = "无法估算" }
+                    return
+                }
+
+                let params = selectedPreset.parameters(for: intensity)
+                let videoBytes = Double(params.videoBitrate) / 8.0 * duration * 0.9
+                let audioBytes = params.audioSampleRate * 2.0 * duration * 0.3
+                let bgmFactor: Double = isBGMEnabled ? 1.2 : 1.0
+                let adjustedAudioBytes = audioBytes * bgmFactor
+                let totalBytes = videoBytes + adjustedAudioBytes
+
+                await MainActor.run {
+                    estimatedOutputSize = formatFileSize(UInt64(totalBytes))
+                    guard sourceFileSize > 0 else {
+                        compressionRatio = 0
+                        return
+                    }
+                    compressionRatio = Float(totalBytes) / Float(sourceFileSize)
+                }
+            } catch {
+                await MainActor.run { estimatedOutputSize = "无法估算" }
+            }
         }
-
-        let params = selectedPreset.parameters(for: intensity)
-
-        // 视频部分: bitrate(bps) / 8 * 时长 * 校正因子
-        let videoBytes = Double(params.videoBitrate) / 8.0 * duration * 0.9
-
-        // 音频部分: AAC 编码近似（考虑BGM）
-        let audioBytes = params.audioSampleRate * 2.0 * duration * 0.3
-        // 如果有BGM，可能会稍微增加文件大小
-        let bgmFactor: Double = isBGMEnabled ? 1.2 : 1.0
-        let adjustedAudioBytes = audioBytes * bgmFactor
-
-        let totalBytes = videoBytes + adjustedAudioBytes
-        estimatedOutputSize = formatFileSize(UInt64(totalBytes))
-
-        // 压缩比
-        guard sourceFileSize > 0 else {
-            compressionRatio = 0
-            return
-        }
-        compressionRatio = Float(totalBytes) / Float(sourceFileSize)
     }
 
     /// 检查是否过度压缩
     func checkOverCompression() -> Bool {
         guard sourceFileSize > 0, compressionRatio > 0 else { return false }
 
-        guard let url = sourceVideoURL else { return false }
-        let asset = AVAsset(url: url)
-        let duration = asset.duration.seconds
+        // 使用异步加载后缓存的时长，避免同步阻塞主线程
+        let duration = cachedDuration
         let threshold: Float
         if duration <= 10 {
             threshold = 0.05

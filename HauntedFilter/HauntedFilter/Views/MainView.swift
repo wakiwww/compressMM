@@ -305,7 +305,7 @@ struct MainView: View {
             viewModel.startProcessing()
         } label: {
             HStack {
-                Image(systemName: "film.badge.magnifyingglass")
+                Image(systemName: "film.fill")
                 Text("开始处理")
                     .fontWeight(.semibold)
             }

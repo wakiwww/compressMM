@@ -28,6 +28,9 @@ class ProcessingViewModel: ObservableObject {
     @Published var sourceFileSizeFormatted: String = ""
     @Published var alertMessage: String = ""
 
+    /// 缓存视频时长（异步加载，供 checkOverCompression 同步使用）
+    private var cachedDuration: TimeInterval = 0
+
     private let processor = VideoProcessor()
 
     /// 开始处理视频
@@ -89,6 +92,13 @@ class ProcessingViewModel: ObservableObject {
         let attrs = try? FileManager.default.attributesOfItem(atPath: url.path)
         sourceFileSize = attrs?[.size] as? UInt64 ?? 0
         sourceFileSizeFormatted = formatFileSize(sourceFileSize)
+        // 异步加载时长并缓存
+        Task {
+            if let duration = try? await AVURLAsset(url: url).load(.duration).seconds,
+               duration > 0 {
+                await MainActor.run { self.cachedDuration = duration }
+            }
+        }
         recalculateEstimation()
     }
 
@@ -148,9 +158,8 @@ class ProcessingViewModel: ObservableObject {
 
         // 动态阈值：根据视频时长调整
         // 短视频(≤10s)更宽容: 5%, 长视频(>60s)更保守: 12%
-        guard let url = sourceVideoURL else { return false }
-        let asset = AVAsset(url: url)
-        let duration = asset.duration.seconds
+        let duration = cachedDuration
+        guard duration > 0 else { return false }
         let threshold: Float
         if duration <= 10 {
             threshold = 0.05

@@ -28,6 +28,9 @@ class ProcessingViewModel_Safe: ObservableObject {
     @Published var sourceFileSizeFormatted: String = ""
     @Published var alertMessage: String = ""
 
+    /// 缓存视频时长（异步加载，供同步方法使用，避免在主线程同步调用 asset.duration）
+    private var cachedDuration: TimeInterval = 0
+
     private let processor = VideoProcessor_Safe()
 
     /// 开始处理视频（安全版本）
@@ -112,10 +115,12 @@ class ProcessingViewModel_Safe: ObservableObject {
 
         print("📊 原始文件大小: \(sourceFileSizeFormatted)")
 
-        // 快速显示视频信息
+        // 快速显示视频信息 & 缓存时长
         Task {
             let asset = AVAsset(url: url)
-            let duration = try? await asset.load(.duration)
+            if let duration = try? await asset.load(.duration) {
+                await MainActor.run { self.cachedDuration = duration.seconds }
+            }
             let videoTracks = try? await asset.loadTracks(withMediaType: .video)
             let audioTracks = try? await asset.loadTracks(withMediaType: .audio)
 
@@ -143,8 +148,8 @@ class ProcessingViewModel_Safe: ObservableObject {
             return
         }
 
-        let asset = AVAsset(url: url)
-        let duration = asset.duration.seconds
+        // 使用缓存的时长（由 didSelectVideo 异步加载），避免在主线程同步阻塞
+        let duration = cachedDuration
         guard duration > 0, !duration.isNaN else {
             estimatedOutputSize = "无法估算"
             return
@@ -170,9 +175,8 @@ class ProcessingViewModel_Safe: ObservableObject {
     func checkOverCompression() -> Bool {
         guard sourceFileSize > 0, compressionRatio > 0 else { return false }
 
-        guard let url = sourceVideoURL else { return false }
-        let asset = AVAsset(url: url)
-        let duration = asset.duration.seconds
+        let duration = cachedDuration
+        guard duration > 0 else { return false }
         let threshold: Float
         if duration <= 10 {
             threshold = 0.05

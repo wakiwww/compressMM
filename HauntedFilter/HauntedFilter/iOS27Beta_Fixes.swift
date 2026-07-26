@@ -102,24 +102,18 @@ class SafeCIContext {
         get {
             if _context == nil {
                 print("🛡️ 延迟初始化CIContext...")
-                // 尝试不同的初始化选项
-                do {
-                    #if targetEnvironment(simulator)
-                        // 模拟器使用更简单的配置
-                        _context = CIContext(options: [
-                            kCIContextUseSoftwareRenderer: false,
-                            kCIContextPriorityRequestLow: true
-                        ])
-                    #else
-                        // 真机使用默认配置
-                        _context = CIContext()
-                    #endif
-                    print("✅ CIContext初始化成功")
-                } catch {
-                    print("❌ CIContext初始化失败: \(error)")
-                    // 创建最简单的CIContext作为后备
-                    _context = CIContext(options: nil)
-                }
+                // CIContext 初始化不抛异常，直接初始化即可
+                #if targetEnvironment(simulator)
+                    // 模拟器使用更简单的配置
+                    _context = CIContext(options: [
+                        kCIContextUseSoftwareRenderer: false,
+                        kCIContextPriorityRequestLow: true
+                    ])
+                #else
+                    // 真机使用默认配置
+                    _context = CIContext()
+                #endif
+                print("✅ CIContext初始化成功")
             }
             return _context!
         }
@@ -185,9 +179,11 @@ extension URL {
 func diagnoseAppStartup() {
     print("🔍 应用启动诊断开始...")
 
-    // 检查基本UIKit组件
-    let screen = UIScreen.main
-    print("📱 屏幕尺寸: \(screen.bounds.size)")
+    // 检查基本UIKit组件（UIScreen.main 需在主线程访问）
+    DispatchQueue.main.async {
+        let screen = UIScreen.main
+        print("📱 屏幕尺寸: \(screen.bounds.size)")
+    }
 
     // 检查文件权限
     let tempDir = FileManager.default.temporaryDirectory
@@ -291,13 +287,17 @@ class ComponentSafety {
     private static func checkUIKit() {
         print("  🎨 UIKit 检查...")
 
-        // 检查基本UIKit组件
-        let screen = UIScreen.main
-        print("  ✅ 屏幕亮度: \(screen.brightness)")
+        // 检查基本UIKit组件（需在主线程访问）
+        safeMainThread("检查屏幕亮度") {
+            let screen = UIScreen.main
+            print("  ✅ 屏幕亮度: \(screen.brightness)")
+        }
 
         // 检查UIApplication状态
-        let app = UIApplication.shared
-        print("  ✅ 应用状态: \(app.applicationState.rawValue)")
+        safeMainThread("检查应用状态") {
+            let app = UIApplication.shared
+            print("  ✅ 应用状态: \(app.applicationState.rawValue)")
+        }
     }
 }
 

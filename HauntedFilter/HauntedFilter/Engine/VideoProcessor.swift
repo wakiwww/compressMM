@@ -4,18 +4,21 @@ import CoreImage
 import UIKit
 
 /// 核心视频处理器：AVAssetReader → CIFilter 链 → AVAssetWriter
+@MainActor
 class VideoProcessor: ObservableObject {
     @Published var progress: Double = 0
     @Published var isProcessing = false
     @Published var isCancelled = false
     @Published var errorMessage: String?
 
-    private let processingQueue = DispatchQueue(label: "com.hauntedfilter.videoprocessor", qos: .userInitiated)
-    private var ciContext: CIContext?
-    private var scanlineTexture: CIImage?
-    // 类属性替代局部变量捕获，避免 Sendable 警告
-    private var audioProcessingActive = false
-    private var videoFramesProcessed = 0
+    /// 仅由后台串行队列（serialQueue）读写，nonisolated(unsafe) 绕开 @MainActor 隔离检查。
+    nonisolated(unsafe) private var ciContext: CIContext?
+    nonisolated(unsafe) private var scanlineTexture: CIImage?
+
+    /// 线程安全的取消标志。
+    /// @Published var isCancelled 只在主线程更新（供 UI 绑定）；
+    /// 后台队列里一律通过 cancelFlag.value 读写，避免 Data Race。
+    let cancelFlag = AtomicBool(false)
 
     init() {
         // 延迟初始化，避免在初始化时可能导致的崩溃
@@ -44,6 +47,7 @@ class VideoProcessor: ObservableObject {
 
         isProcessing = true
         isCancelled = false
+        cancelFlag.value = false   // 同步重置线程安全标志
         progress = 0
         errorMessage = nil
 
@@ -81,14 +85,17 @@ class VideoProcessor: ObservableObject {
         }
     }
 
-    /// 取消处理
-    func cancel() {
-        isCancelled = true
+    /// 取消处理（可从任意线程调用）
+    nonisolated func cancel() {
+        cancelFlag.value = true
+        Task { @MainActor [weak self] in
+            self?.isCancelled = true
+        }
     }
 
-    // MARK: - 核心处理逻辑
+    // MARK: - 核心处理逻辑（以下方法由后台队列调用，标记 nonisolated）
 
-    private func processAsset(
+    nonisolated private func processAsset(
         _ asset: AVAsset,
         parameters: ProcessingParameters,
         preset: VideoPreset,
@@ -175,7 +182,7 @@ class VideoProcessor: ObservableObject {
             // 音频写入器输入设置
             let audioWriterSettings: [String: Any] = [
                 AVFormatIDKey: kAudioFormatMPEG4AAC,
-                AVSampleRateKey: max(8000.0, min(192000.0, parameters.audioSampleRate)),
+                AVSampleRateKey: max(16000.0, min(192000.0, parameters.audioSampleRate)),
                 AVNumberOfChannelsKey: 2,
                 AVEncoderBitRateKey: 128_000
             ]
@@ -230,34 +237,58 @@ class VideoProcessor: ObservableObject {
         }
 
         // 启动音频处理（并行处理）
-        self.audioProcessingActive = audioReaderOutput != nil && audioWriterInput != nil
+        // 用 AtomicBool 追踪音频是否仍在进行，避免通过 self 跨队列访问 @Published 属性
+        let audioActive = AtomicBool(audioReaderOutput != nil && audioWriterInput != nil)
+        // 提前捕获 cancelFlag 引用，闭包内无需经过 self，彻底消除 Data Race
+        let cancelRef = cancelFlag
+
         if let audioReaderOutput = audioReaderOutput, let audioWriterInput = audioWriterInput {
             audioGroup.enter()
 
             let weakAudioWriter = audioWriterInput
             let weakAudioReader = audioReaderOutput
-            audioWriterInput.requestMediaDataWhenReady(on: audioQueue) { [weak self] in
-                guard let self = self else {
-                    weakAudioWriter.markAsFinished()
-                    audioGroup.leave()
+            // 注意：不再捕获 [weak self]，所有状态通过值类型或 AtomicBool 传递
+            // 用变量追踪是否已完成，防止重复 leave
+            var audioDidFinish = false
+            audioWriterInput.requestMediaDataWhenReady(on: audioQueue) {
+                // 如果写入器已失败，立即完成
+                if writer.status == .failed {
+                    if !audioDidFinish {
+                        audioDidFinish = true
+                        audioActive.value = false
+                        audioGroup.leave()
+                    }
                     return
                 }
                 while weakAudioWriter.isReadyForMoreMediaData {
-                    if self.isCancelled {
-                        weakAudioWriter.markAsFinished()
-                        self.audioProcessingActive = false
-                        audioGroup.leave()
+                    if cancelRef.value {
+                        if !audioDidFinish {
+                            audioDidFinish = true
+                            weakAudioWriter.markAsFinished()
+                            audioActive.value = false
+                            audioGroup.leave()
+                        }
                         return
                     }
                     if let sampleBuffer = weakAudioReader.copyNextSampleBuffer() {
                         weakAudioWriter.append(sampleBuffer)
                     } else {
                         print("✅ 音频数据处理完成")
-                        weakAudioWriter.markAsFinished()
-                        self.audioProcessingActive = false
-                        audioGroup.leave()
+                        if !audioDidFinish {
+                            audioDidFinish = true
+                            weakAudioWriter.markAsFinished()
+                            audioActive.value = false
+                            audioGroup.leave()
+                        }
                         return
                     }
+                }
+                // while 循环退出（isReadyForMoreMediaData = false）但未完成
+                if writer.status == .failed && !audioDidFinish {
+                    audioDidFinish = true
+                    audioActive.value = false
+                    print("⚠️ 音频写入器已失败，信号完成")
+                    audioGroup.leave()
                 }
             }
 
@@ -266,22 +297,44 @@ class VideoProcessor: ObservableObject {
 
         // 启动视频处理
         videoGroup.enter()
+        var videoDidFinish = false
         writerInput.requestMediaDataWhenReady(on: serialQueue) { [weak self] in
             guard let self = self else {
-                writerInput.markAsFinished()
-                videoGroup.leave()
-                return
-            }
-            while writerInput.isReadyForMoreMediaData {
-                if self.isCancelled {
+                if !videoDidFinish {
+                    videoDidFinish = true
                     writerInput.markAsFinished()
                     videoGroup.leave()
+                }
+                return
+            }
+
+            // 如果写入器已失败，立即完成
+            if writer.status == .failed {
+                if !videoDidFinish {
+                    videoDidFinish = true
+                    print("⚠️ 视频写入器已失败，提前完成")
+                    videoGroup.leave()
+                }
+                return
+            }
+
+            while writerInput.isReadyForMoreMediaData {
+                // 通过 cancelRef（AtomicBool）读取，不经过 @Published 属性，线程安全
+                if cancelRef.value {
+                    if !videoDidFinish {
+                        videoDidFinish = true
+                        writerInput.markAsFinished()
+                        videoGroup.leave()
+                    }
                     return
                 }
                 guard let sampleBuffer = readerOutput.copyNextSampleBuffer() else {
                     print("✅ 视频数据处理完成")
-                    writerInput.markAsFinished()
-                    videoGroup.leave()
+                    if !videoDidFinish {
+                        videoDidFinish = true
+                        writerInput.markAsFinished()
+                        videoGroup.leave()
+                    }
                     return
                 }
 
@@ -307,6 +360,14 @@ class VideoProcessor: ObservableObject {
                     self?.progress = progressValue
                 }
             }
+
+            // while 循环退出（isReadyForMoreMediaData == false）但未完成
+            // 如果写入器已失败，不会再收到回调，需在此 leave
+            if writer.status == .failed && !videoDidFinish {
+                videoDidFinish = true
+                print("⚠️ 视频写入器状态失败，信号完成")
+                videoGroup.leave()
+            }
         }
 
         // 等待视频和音频处理都完成
@@ -316,7 +377,7 @@ class VideoProcessor: ObservableObject {
             }
         }
         let audioComplete: Bool
-        if self.audioProcessingActive {
+        if audioActive.value {
             audioComplete = await withCheckedContinuation { continuation in
                 DispatchQueue.global().async {
                     continuation.resume(returning: audioGroup.wait(timeout: .now() + 120.0) == .success)
@@ -336,15 +397,21 @@ class VideoProcessor: ObservableObject {
         }
 
         // --- 完成 ---
-        if isCancelled {
+        if cancelFlag.value {
             reader.cancelReading()
             writer.cancelWriting()
             try? FileManager.default.removeItem(at: outputURL)
             throw ProcessingError.cancelled
         }
 
-        writer.finishWriting {
-            // 音频处理完成后 finishWriting 在下面等待
+        // 如果写入器已失败（例如音频编码器初始化失败），直接抛出错误
+        if writer.status == .failed {
+            throw writer.error ?? ProcessingError.writerFinishFailed
+        }
+
+        // 仅在状态为 .writing 时调用 finishWriting（否则会崩溃）
+        if writer.status == .writing {
+            writer.finishWriting { }
         }
 
         // 等待写入完成（使用异步方式）
@@ -361,9 +428,9 @@ class VideoProcessor: ObservableObject {
         }
     }
 
-    // MARK: - 帧处理
+    // MARK: - 帧处理（以下方法由后台队列调用，标记 nonisolated）
 
-    private func processSampleBuffer(
+    nonisolated private func processSampleBuffer(
         _ sampleBuffer: CMSampleBuffer,
         parameters: ProcessingParameters,
         preset: VideoPreset,
@@ -432,7 +499,7 @@ class VideoProcessor: ObservableObject {
         return newSampleBuffer
     }
 
-    private func createPixelBuffer(from image: CIImage, size: CGSize) -> CVPixelBuffer? {
+    nonisolated private func createPixelBuffer(from image: CIImage, size: CGSize) -> CVPixelBuffer? {
         let width = Int(size.width)
         let height = Int(size.height)
 

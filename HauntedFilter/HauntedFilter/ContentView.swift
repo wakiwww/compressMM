@@ -2,6 +2,26 @@ import SwiftUI
 import PhotosUI
 import Photos
 
+// MARK: - Hex Color 扩展
+
+extension Color {
+    init(hex: String) {
+        let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
+        var int: UInt64 = 0
+        Scanner(string: hex).scanHexInt64(&int)
+        let r, g, b: Double
+        switch hex.count {
+        case 6:
+            r = Double((int >> 16) & 0xFF) / 255
+            g = Double((int >> 8) & 0xFF) / 255
+            b = Double(int & 0xFF) / 255
+        default:
+            r = 1; g = 1; b = 1
+        }
+        self.init(red: r, green: g, blue: b)
+    }
+}
+
 struct ContentView: View {
     @StateObject private var viewModel = ProcessingViewModel()
     @State private var showPicker = false
@@ -33,8 +53,6 @@ struct ContentView: View {
             .onChange(of: viewModel.selectedItem) { newItem in
                 guard let newItem else { return }
                 Task {
-                    // 使用 loadTransferable(type: URL.self) 直接获取文件 URL，
-                    // 避免把整个视频 Data 读入内存导致 OOM 闪退
                     do {
                         guard let url = try await loadVideoURL(from: newItem) else { return }
                         await MainActor.run {
@@ -49,17 +67,12 @@ struct ContentView: View {
         .preferredColorScheme(.dark)
     }
 
-    // MARK: - 视频 URL 加载（零拷贝，不把视频读入内存）
+    // MARK: - 视频 URL 加载
 
     private func loadVideoURL(from item: PhotosPickerItem) async throws -> URL? {
-        // 优先用 URL 类型直接拿路径（iOS 16+ Photos framework 支持）
         if let url = try? await item.loadTransferable(type: URL.self) {
-            // Photos 返回的是临时沙盒 URL，直接可用
             return url
         }
-
-        // Fallback：用 Data 类型但做流式写入（兼容旧系统）
-        // 注意：仅在 URL 方式失败时走此路径
         guard let data = try await item.loadTransferable(type: Data.self) else {
             return nil
         }

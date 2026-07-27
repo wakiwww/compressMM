@@ -56,16 +56,23 @@ struct FilterChainBuilder {
             }
         }
 
-        // 3. 偏色（通道偏移）
-        if preset != .cctv { // CCTV 接近黑白，不需要明显偏色
-            let r: Float = 1.0
-            let g: Float = preset == .oldPhone ? 1.3 : 1.0
-            let b: Float = preset == .oldPhone ? 0.7 : 0.9
+        // 3. 偏色（通道偏移）— 按预设应用不同色调
+        let colorTint: (r: Float, g: Float, b: Float)? = {
+            switch preset {
+            case .basement:  return (1.0, 0.85, 0.7)   // 昏暗地下偏黄绿
+            case .vhs:       return (1.1, 0.95, 0.8)   // 磁带暖色偏淡
+            case .signal:    return (0.7, 1.0, 0.7)    // 深海偏青绿
+            case .fallout:   return (1.2, 0.8, 0.6)    // 核辐射暖黄过曝
+            case .dialup:    return (0.8, 0.8, 1.0)    // 古早网络偏蓝
+            case .broadcast: return (1.0, 0.75, 0.65)  // 末世偏橙褐
+            }
+        }()
+        if let tint = colorTint {
             if let colorMatrix = CIFilter(name: "CIColorMatrix") {
                 colorMatrix.setValue(image, forKey: kCIInputImageKey)
-                colorMatrix.setValue(CIVector(x: CGFloat(r), y: 0, z: 0, w: 0), forKey: "inputRVector")
-                colorMatrix.setValue(CIVector(x: 0, y: CGFloat(g), z: 0, w: 0), forKey: "inputGVector")
-                colorMatrix.setValue(CIVector(x: 0, y: 0, z: CGFloat(b), w: 0), forKey: "inputBVector")
+                colorMatrix.setValue(CIVector(x: CGFloat(tint.r), y: 0, z: 0, w: 0), forKey: "inputRVector")
+                colorMatrix.setValue(CIVector(x: 0, y: CGFloat(tint.g), z: 0, w: 0), forKey: "inputGVector")
+                colorMatrix.setValue(CIVector(x: 0, y: 0, z: CGFloat(tint.b), w: 0), forKey: "inputBVector")
                 if let output = colorMatrix.outputImage {
                     image = output
                 }

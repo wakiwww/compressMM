@@ -11,7 +11,7 @@ class ProcessingViewModel: ObservableObject {
     @Published var outputURL: URL?
     @Published var isProcessing = false
     @Published var progress: Double = 0
-    @Published var selectedPreset: VideoPreset = .oldPhone {
+    @Published var selectedPreset: VideoPreset = .basement {
         didSet { recalculateEstimation() }
     }
     @Published var intensity: Float = 50 {
@@ -27,6 +27,17 @@ class ProcessingViewModel: ObservableObject {
     @Published var sourceFileSize: UInt64 = 0
     @Published var sourceFileSizeFormatted: String = ""
     @Published var alertMessage: String = ""
+    @Published var videoDuration: String?
+
+    // MARK: - 音频控制
+    @Published var audioExpanded = true
+    @Published var audioMode: AudioMode = .followVideo
+    @Published var audioIntensity: Float = 50
+
+    // MARK: - 输出设置
+    @Published var outputResolution: OutputResolution = .followMode
+    @Published var outputFrameRate: OutputFrameRate = .followMode
+    @Published var saveLocation: SaveLocation = .photoLibrary
 
     /// 缓存视频时长（异步加载，供 checkOverCompression 同步使用）
     private var cachedDuration: TimeInterval = 0
@@ -94,9 +105,15 @@ class ProcessingViewModel: ObservableObject {
         sourceFileSizeFormatted = formatFileSize(sourceFileSize)
         // 异步加载时长并缓存
         Task {
-            if let duration = try? await AVURLAsset(url: url).load(.duration).seconds,
+            let asset = AVURLAsset(url: url)
+            if let duration = try? await asset.load(.duration).seconds,
                duration > 0 {
-                await MainActor.run { self.cachedDuration = duration }
+                let mins = Int(duration) / 60
+                let secs = Int(duration) % 60
+                await MainActor.run {
+                    self.cachedDuration = duration
+                    self.videoDuration = String(format: "%02d:%02d", mins, secs)
+                }
             }
         }
         recalculateEstimation()

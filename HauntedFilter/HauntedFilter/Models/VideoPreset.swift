@@ -1,156 +1,223 @@
 import Foundation
 
-/// 视频处理预设枚举
+/// 视频降质模式枚举 — 6 种阴间风格
 enum VideoPreset: String, CaseIterable, Identifiable {
-    case oldPhone   // 老式座机 / BB机摄像头
-    case vhs        // VHS 录像带
-    case cctv       // 老式监控 CCTV
-    case qubuHuazhen // 🏭 曲埠华臻机械 — 2010诺基亚手机质感
+    case basement    // 地下录像
+    case vhs         // 磁带损坏
+    case signal      // 深海信号
+    case fallout     // 核辐射
+    case dialup      // 古早网络
+    case broadcast   // 末世广播
 
     var id: String { rawValue }
 
+    // MARK: - 显示信息
+
     var displayName: String {
         switch self {
-        case .oldPhone: return "老式座机"
-        case .vhs:      return "VHS 录像带"
-        case .cctv:     return "监控 CCTV"
-        case .qubuHuazhen: return "曲埠华臻机械"
+        case .basement:  return "地下录像"
+        case .vhs:       return "磁带损坏"
+        case .signal:    return "深海信号"
+        case .fallout:   return "核辐射"
+        case .dialup:    return "古早网络"
+        case .broadcast: return "末世广播"
+        }
+    }
+
+    var englishName: String {
+        switch self {
+        case .basement:  return "BASEMENT"
+        case .vhs:       return "VHS"
+        case .signal:    return "SIGNAL"
+        case .fallout:   return "FALLOUT"
+        case .dialup:    return "DIALUP"
+        case .broadcast: return "BROADCAST"
         }
     }
 
     var subtitle: String {
         switch self {
-        case .oldPhone: return "低分辨率 · 偏色 · 电话音"
-        case .vhs:      return "扫描线 · 色彩溢出 · 底噪"
-        case .cctv:     return "黑白 · 卡顿 · 时间戳"
-        case .qubuHuazhen: return "2010诺基亚 · 高压缩 · BGM标配"
+        case .basement:  return "超低码率 · 块状压缩噪声 · 8kHz音频"
+        case .vhs:       return "模拟抖动 · 色彩偏移 · 扫描线"
+        case .signal:    return "马赛克 · 帧丢失 · 随机花屏"
+        case .fallout:   return "严重过曝 · 高对比 · 颗粒感"
+        case .dialup:    return "极低分辨率 · 高压缩 · 低帧率"
+        case .broadcast: return "随机静帧 · 信号条纹 · 色偏"
         }
     }
 
     var iconName: String {
         switch self {
-        case .oldPhone: return "phone.fill"
-        case .vhs:      return "film.stack.fill"
-        case .cctv:     return "video.fill.badge.ellipsis"
-        case .qubuHuazhen: return "gearshape.2.fill"
+        case .basement:  return "house.badge.waveform.fill"
+        case .vhs:       return "waveform.circle.fill"
+        case .signal:    return "antenna.radiowaves.left.and.right"
+        case .fallout:   return "atom"
+        case .dialup:    return "phone.connection.fill"
+        case .broadcast: return "radio.fill"
         }
     }
 
-    /// 推荐压缩量 — 一键设到最佳模拟值
+    /// 推荐压缩量
     var recommendedIntensity: Float {
         switch self {
-        case .oldPhone: return 55
-        case .vhs:      return 60
-        case .cctv:     return 65
-        case .qubuHuazhen: return 58  // 高压缩但不极端，保持诺基亚质感
+        case .basement:  return 60
+        case .vhs:       return 55
+        case .signal:    return 65
+        case .fallout:   return 70
+        case .dialup:    return 62
+        case .broadcast: return 58
         }
     }
 
-    /// 基线参数（新版 0%，≈ 旧版 50% 强度——轻微效果起点）
+    // MARK: - 参数定义
+
+    /// 基线参数（intensity=0%，轻微效果起点）
     var baselineParameters: ProcessingParameters {
         switch self {
-        case .oldPhone:
+        case .basement:
             return ProcessingParameters(
-                targetWidth: 480, targetFrameRate: 24, videoBitrate: 2_000_000,
-                saturation: 1.0, contrast: 1.0, brightness: 0,
+                targetWidth: 640, targetFrameRate: 24, videoBitrate: 2_000_000,
+                saturation: 0.95, contrast: 1.0, brightness: 0,
                 noiseIntensity: 0.02, chromaShiftPixels: 0, scanlineAlpha: 0,
-                audioLowFreq: 200, audioHighFreq: 4000, audioSampleRate: 44100, backgroundNoiseLevel: 0
+                audioLowFreq: 200, audioHighFreq: 8000, audioSampleRate: 44100, backgroundNoiseLevel: 0
             )
         case .vhs:
             return ProcessingParameters(
-                targetWidth: 480, targetFrameRate: 24, videoBitrate: 2_000_000,
+                targetWidth: 640, targetFrameRate: 24, videoBitrate: 2_000_000,
                 saturation: 1.0, contrast: 1.0, brightness: 0,
-                noiseIntensity: 0.01, chromaShiftPixels: 0, scanlineAlpha: 0,
-                audioLowFreq: 200, audioHighFreq: 4000, audioSampleRate: 44100, backgroundNoiseLevel: 0
+                noiseIntensity: 0.01, chromaShiftPixels: 2, scanlineAlpha: 0.05,
+                audioLowFreq: 200, audioHighFreq: 8000, audioSampleRate: 44100, backgroundNoiseLevel: 0.05
             )
-        case .cctv:
+        case .signal:
             return ProcessingParameters(
-                targetWidth: 480, targetFrameRate: 24, videoBitrate: 2_000_000,
-                saturation: 1.0, contrast: 1.0, brightness: 0,
-                noiseIntensity: 0.01, chromaShiftPixels: 0, scanlineAlpha: 0,
-                audioLowFreq: 200, audioHighFreq: 4000, audioSampleRate: 44100, backgroundNoiseLevel: 0
+                targetWidth: 640, targetFrameRate: 24, videoBitrate: 2_000_000,
+                saturation: 0.9, contrast: 1.05, brightness: 0,
+                noiseIntensity: 0.03, chromaShiftPixels: 0, scanlineAlpha: 0,
+                audioLowFreq: 300, audioHighFreq: 6000, audioSampleRate: 44100, backgroundNoiseLevel: 0
             )
-        case .qubuHuazhen:
+        case .fallout:
             return ProcessingParameters(
-                targetWidth: 480, targetFrameRate: 24, videoBitrate: 2_000_000,
-                saturation: 1.0, contrast: 1.0, brightness: 0,
-                noiseIntensity: 0, chromaShiftPixels: 0, scanlineAlpha: 0,
-                audioLowFreq: 200, audioHighFreq: 4000, audioSampleRate: 44100, backgroundNoiseLevel: 0
+                targetWidth: 640, targetFrameRate: 24, videoBitrate: 2_000_000,
+                saturation: 0.85, contrast: 1.1, brightness: 0.05,
+                noiseIntensity: 0.04, chromaShiftPixels: 0, scanlineAlpha: 0,
+                audioLowFreq: 300, audioHighFreq: 6000, audioSampleRate: 44100, backgroundNoiseLevel: 0.03
+            )
+        case .dialup:
+            return ProcessingParameters(
+                targetWidth: 640, targetFrameRate: 24, videoBitrate: 2_000_000,
+                saturation: 0.9, contrast: 1.05, brightness: 0,
+                noiseIntensity: 0.03, chromaShiftPixels: 0, scanlineAlpha: 0,
+                audioLowFreq: 300, audioHighFreq: 6000, audioSampleRate: 44100, backgroundNoiseLevel: 0
+            )
+        case .broadcast:
+            return ProcessingParameters(
+                targetWidth: 640, targetFrameRate: 24, videoBitrate: 2_000_000,
+                saturation: 0.9, contrast: 1.05, brightness: 0,
+                noiseIntensity: 0.02, chromaShiftPixels: 1, scanlineAlpha: 0.03,
+                audioLowFreq: 200, audioHighFreq: 8000, audioSampleRate: 44100, backgroundNoiseLevel: 0.02
             )
         }
     }
 
-    /// 低强度参数（新版 t=0.0，≈ 旧版全力 90%）
+    /// 低强度参数（intensity=50%，显著降质）
     var lowParameters: ProcessingParameters {
         switch self {
-        case .oldPhone:
+        case .basement:
             return ProcessingParameters(
-                targetWidth: 120, targetFrameRate: 6, videoBitrate: 80_000,
-                saturation: 0.2, contrast: 1.2, brightness: -0.05,
-                noiseIntensity: 0.35, chromaShiftPixels: 0, scanlineAlpha: 0,
-                audioLowFreq: 300, audioHighFreq: 3000, audioSampleRate: 8000, backgroundNoiseLevel: 0
+                targetWidth: 320, targetFrameRate: 15, videoBitrate: 500_000,
+                saturation: 0.7, contrast: 1.1, brightness: -0.05,
+                noiseIntensity: 0.15, chromaShiftPixels: 0, scanlineAlpha: 0,
+                audioLowFreq: 200, audioHighFreq: 4000, audioSampleRate: 22050, backgroundNoiseLevel: 0.15
             )
         case .vhs:
             return ProcessingParameters(
-                targetWidth: 160, targetFrameRate: 10, videoBitrate: 150_000,
-                saturation: 0.3, contrast: 1.3, brightness: -0.03,
-                noiseIntensity: 0.15, chromaShiftPixels: 5, scanlineAlpha: 0.3,
-                audioLowFreq: 100, audioHighFreq: 6000, audioSampleRate: 22050, backgroundNoiseLevel: 0.2
+                targetWidth: 320, targetFrameRate: 20, videoBitrate: 800_000,
+                saturation: 1.1, contrast: 1.1, brightness: -0.02,
+                noiseIntensity: 0.08, chromaShiftPixels: 8, scanlineAlpha: 0.25,
+                audioLowFreq: 100, audioHighFreq: 6000, audioSampleRate: 32000, backgroundNoiseLevel: 0.15
             )
-        case .cctv:
+        case .signal:
             return ProcessingParameters(
-                targetWidth: 120, targetFrameRate: 5, videoBitrate: 60_000,
-                saturation: 0.05, contrast: 1.4, brightness: -0.1,
+                targetWidth: 240, targetFrameRate: 12, videoBitrate: 300_000,
+                saturation: 0.6, contrast: 1.15, brightness: -0.03,
                 noiseIntensity: 0.2, chromaShiftPixels: 0, scanlineAlpha: 0,
-                audioLowFreq: 200, audioHighFreq: 4000, audioSampleRate: 8000, backgroundNoiseLevel: 0
+                audioLowFreq: 400, audioHighFreq: 4000, audioSampleRate: 16000, backgroundNoiseLevel: 0.1
             )
-        case .qubuHuazhen:
-            // 高压缩、轻微色彩衰减、保留画面完整性（不过度处理色彩）
+        case .fallout:
             return ProcessingParameters(
-                targetWidth: 180, targetFrameRate: 15, videoBitrate: 120_000,
-                saturation: 0.75, contrast: 1.05, brightness: 0.02,
-                noiseIntensity: 0.08, chromaShiftPixels: 0, scanlineAlpha: 0,
-                audioLowFreq: 200, audioHighFreq: 4000, audioSampleRate: 22050, backgroundNoiseLevel: 0
+                targetWidth: 360, targetFrameRate: 18, videoBitrate: 600_000,
+                saturation: 0.4, contrast: 1.4, brightness: 0.15,
+                noiseIntensity: 0.25, chromaShiftPixels: 0, scanlineAlpha: 0,
+                audioLowFreq: 300, audioHighFreq: 4000, audioSampleRate: 32000, backgroundNoiseLevel: 0.2
+            )
+        case .dialup:
+            return ProcessingParameters(
+                targetWidth: 200, targetFrameRate: 10, videoBitrate: 150_000,
+                saturation: 0.5, contrast: 1.2, brightness: -0.02,
+                noiseIntensity: 0.18, chromaShiftPixels: 0, scanlineAlpha: 0,
+                audioLowFreq: 300, audioHighFreq: 4000, audioSampleRate: 16000, backgroundNoiseLevel: 0.1
+            )
+        case .broadcast:
+            return ProcessingParameters(
+                targetWidth: 320, targetFrameRate: 15, videoBitrate: 400_000,
+                saturation: 0.6, contrast: 1.15, brightness: -0.02,
+                noiseIntensity: 0.12, chromaShiftPixels: 5, scanlineAlpha: 0.15,
+                audioLowFreq: 200, audioHighFreq: 4000, audioSampleRate: 22050, backgroundNoiseLevel: 0.15
             )
         }
     }
 
-    /// 高强度参数（新版 t=1.0 — 像素块级极致阴间）
+    /// 高强度参数（intensity=100%，极致崩坏）
     var highParameters: ProcessingParameters {
         switch self {
-        case .oldPhone:
+        case .basement:
             return ProcessingParameters(
-                targetWidth: 60, targetFrameRate: 3, videoBitrate: 30_000,
-                saturation: 0.05, contrast: 1.8, brightness: -0.15,
-                noiseIntensity: 0.8, chromaShiftPixels: 0, scanlineAlpha: 0,
-                audioLowFreq: 300, audioHighFreq: 2400, audioSampleRate: 8000, backgroundNoiseLevel: 0
+                targetWidth: 80, targetFrameRate: 5, videoBitrate: 50_000,
+                saturation: 0.2, contrast: 1.5, brightness: -0.1,
+                noiseIntensity: 0.6, chromaShiftPixels: 0, scanlineAlpha: 0,
+                audioLowFreq: 300, audioHighFreq: 2400, audioSampleRate: 8000, backgroundNoiseLevel: 0.5
             )
         case .vhs:
             return ProcessingParameters(
-                targetWidth: 60, targetFrameRate: 4, videoBitrate: 30_000,
-                saturation: 0.08, contrast: 1.6, brightness: -0.1,
-                noiseIntensity: 0.6, chromaShiftPixels: 18, scanlineAlpha: 0.7,
-                audioLowFreq: 80, audioHighFreq: 4000, audioSampleRate: 8000, backgroundNoiseLevel: 0.5
+                targetWidth: 160, targetFrameRate: 12, videoBitrate: 200_000,
+                saturation: 1.3, contrast: 1.3, brightness: -0.05,
+                noiseIntensity: 0.2, chromaShiftPixels: 18, scanlineAlpha: 0.6,
+                audioLowFreq: 80, audioHighFreq: 4000, audioSampleRate: 16000, backgroundNoiseLevel: 0.4
             )
-        case .cctv:
+        case .signal:
             return ProcessingParameters(
-                targetWidth: 60, targetFrameRate: 2, videoBitrate: 20_000,
-                saturation: 0.0, contrast: 2.0, brightness: -0.2,
+                targetWidth: 80, targetFrameRate: 6, videoBitrate: 60_000,
+                saturation: 0.15, contrast: 1.5, brightness: -0.1,
+                noiseIntensity: 0.5, chromaShiftPixels: 0, scanlineAlpha: 0,
+                audioLowFreq: 500, audioHighFreq: 2000, audioSampleRate: 8000, backgroundNoiseLevel: 0.3
+            )
+        case .fallout:
+            return ProcessingParameters(
+                targetWidth: 200, targetFrameRate: 10, videoBitrate: 150_000,
+                saturation: 0.05, contrast: 2.0, brightness: 0.3,
                 noiseIntensity: 0.7, chromaShiftPixels: 0, scanlineAlpha: 0,
-                audioLowFreq: 100, audioHighFreq: 3000, audioSampleRate: 8000, backgroundNoiseLevel: 0
+                audioLowFreq: 300, audioHighFreq: 2000, audioSampleRate: 16000, backgroundNoiseLevel: 0.6
             )
-        case .qubuHuazhen:
-            // 极致压缩但不伤色彩，保留诺基亚时代的特征
+        case .dialup:
             return ProcessingParameters(
-                targetWidth: 80, targetFrameRate: 8, videoBitrate: 50_000,
-                saturation: 0.5, contrast: 1.15, brightness: 0.0,
-                noiseIntensity: 0.2, chromaShiftPixels: 0, scanlineAlpha: 0,
-                audioLowFreq: 200, audioHighFreq: 4000, audioSampleRate: 16000, backgroundNoiseLevel: 0
+                targetWidth: 60, targetFrameRate: 5, videoBitrate: 40_000,
+                saturation: 0.15, contrast: 1.5, brightness: -0.08,
+                noiseIntensity: 0.55, chromaShiftPixels: 0, scanlineAlpha: 0,
+                audioLowFreq: 400, audioHighFreq: 3000, audioSampleRate: 8000, backgroundNoiseLevel: 0.35
+            )
+        case .broadcast:
+            return ProcessingParameters(
+                targetWidth: 120, targetFrameRate: 8, videoBitrate: 80_000,
+                saturation: 0.2, contrast: 1.4, brightness: -0.08,
+                noiseIntensity: 0.4, chromaShiftPixels: 12, scanlineAlpha: 0.4,
+                audioLowFreq: 300, audioHighFreq: 3000, audioSampleRate: 8000, backgroundNoiseLevel: 0.45
             )
         }
     }
 
-    /// 根据强度获取插值后的参数（新版映射）
+    // MARK: - 插值计算
+
+    /// 根据强度获取插值后的参数
     /// - intensity 0-50: baseline → low
     /// - intensity 50-100: low → high
     func parameters(for intensity: Float) -> ProcessingParameters {
@@ -164,16 +231,17 @@ enum VideoPreset: String, CaseIterable, Identifiable {
         }
     }
 
-    /// 预设特有的启用标志
+    // MARK: - 特效开关
+
     func shouldEnableChromaShift() -> Bool {
-        self == .vhs
+        self == .vhs || self == .broadcast
     }
 
     func shouldEnableScanlines() -> Bool {
-        self == .vhs
+        self == .vhs || self == .broadcast
     }
 
     func shouldEnableTimestamp() -> Bool {
-        self == .cctv
+        false  // 设计文档中未要求时间戳
     }
 }

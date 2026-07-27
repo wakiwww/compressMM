@@ -78,7 +78,9 @@ struct ProcessingProgressView: View {
         .navigationBarBackButtonHidden(true)
         .onChange(of: viewModel.outputURL) { url in
             if url != nil {
-                dismiss()
+                DispatchQueue.main.async {
+                    dismiss()
+                }
             }
         }
     }

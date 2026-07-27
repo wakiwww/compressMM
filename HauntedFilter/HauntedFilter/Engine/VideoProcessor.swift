@@ -179,10 +179,11 @@ class VideoProcessor: ObservableObject {
                 print("✅ 音频读取器已添加")
             }
 
-            // 音频写入器输入设置
+            // 音频写入器输入设置 — 确保采样率是合法的 AAC 编码值
+            let safeSampleRate = Self.nearestValidAACSampleRate(for: parameters.audioSampleRate)
             let audioWriterSettings: [String: Any] = [
                 AVFormatIDKey: kAudioFormatMPEG4AAC,
-                AVSampleRateKey: max(16000.0, min(192000.0, parameters.audioSampleRate)),
+                AVSampleRateKey: safeSampleRate,
                 AVNumberOfChannelsKey: 2,
                 AVEncoderBitRateKey: 128_000
             ]
@@ -526,6 +527,20 @@ class VideoProcessor: ObservableObject {
     // MARK: - 音频处理
 
     // 音频处理已集成到主处理流程中，与视频处理并行执行
+
+    // MARK: - 工具方法
+
+    /// 合法的 AAC 编码采样率列表（Hz）
+    private static let validAACSampleRates: [Double] = [
+        8000, 11025, 12000, 16000, 22050, 24000,
+        32000, 44100, 48000, 64000, 88200, 96000
+    ]
+
+    /// 将任意采样率四舍五入到最近的合法 AAC 采样率
+    nonisolated static func nearestValidAACSampleRate(for rate: Double) -> Double {
+        let clamped = max(validAACSampleRates.first!, min(validAACSampleRates.last!, rate))
+        return validAACSampleRates.min(by: { abs($0 - clamped) < abs($1 - clamped) }) ?? 44100
+    }
 }
 
 // MARK: - 错误定义

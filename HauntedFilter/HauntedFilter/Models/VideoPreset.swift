@@ -3,7 +3,7 @@ import Foundation
 /// 视频降质模式 — 3 种风格
 enum VideoPreset: String, CaseIterable, Identifiable {
     case egg       // 鸡蛋 — 极低帧率马赛克，保留原色
-    case rain      // 雨夜骑行男 — 满帧极端马赛克，不可辨认
+    case rain      // 雨夜骑行男 — 满帧极端马赛克，不碰色彩，音频削低频
     case netease   // 岡易云vip — 音视频全损，双管齐下
 
     var id: String { rawValue }
@@ -29,7 +29,7 @@ enum VideoPreset: String, CaseIterable, Identifiable {
     var subtitle: String {
         switch self {
         case .egg:     return "5fps · 肉眼可见马赛克 · 保留原色"
-        case .rain:    return "30fps · 极端像素化 · 不可辨认"
+        case .rain:    return "30fps · 极端像素化 · 不碰色彩"
         case .netease: return "音质全损 · 视频全损 · 双管齐下"
         }
     }
@@ -42,7 +42,7 @@ enum VideoPreset: String, CaseIterable, Identifiable {
         }
     }
 
-    /// 原汁原味压缩量 — 一键出效果，同时保证编码安全
+    /// 原汁原味压缩量 — 一键出效果
     var sweetSpotIntensity: Float {
         switch self {
         case .egg:     return 50
@@ -63,62 +63,64 @@ enum VideoPreset: String, CaseIterable, Identifiable {
         )
     }
 
-    /// 中档（50%）：原汁原味效果（已放大压缩量，约等于旧版 70% 的体感）
+    /// 中档（50%）：原汁原味效果
     var lowParameters: ProcessingParameters {
         switch self {
         case .egg:
             // 5fps + 100px 缩放 = 肉眼可见大块马赛克，保留原色
+            // 音频：电话音质
             return ProcessingParameters(
                 targetWidth: 100, targetFrameRate: 5, videoBitrate: 300_000,
                 saturation: 1.0, contrast: 1.0, brightness: 0,
                 noiseIntensity: 0.12, chromaShiftPixels: 0, scanlineAlpha: 0,
-                audioLowFreq: 200, audioHighFreq: 8000, audioSampleRate: 22050, backgroundNoiseLevel: 0.08
+                audioLowFreq: 400, audioHighFreq: 3500, audioSampleRate: 11025, backgroundNoiseLevel: 0.15
             )
         case .rain:
-            // 30fps 满帧，70px 缩放 → 完全不可辨认的像素块
+            // 30fps 满帧，70px 缩放 → 不可辨认的像素块
+            // 保留原色不碰，音频削低频 + 中高频失真
             return ProcessingParameters(
                 targetWidth: 70, targetFrameRate: 30, videoBitrate: 400_000,
-                saturation: 0.6, contrast: 1.4, brightness: -0.03,
-                noiseIntensity: 0.45, chromaShiftPixels: 6, scanlineAlpha: 0.15,
-                audioLowFreq: 150, audioHighFreq: 6000, audioSampleRate: 22050, backgroundNoiseLevel: 0.15
+                saturation: 1.0, contrast: 1.0, brightness: 0,
+                noiseIntensity: 0.45, chromaShiftPixels: 0, scanlineAlpha: 0,
+                audioLowFreq: 600, audioHighFreq: 3000, audioSampleRate: 11025, backgroundNoiseLevel: 0.2
             )
         case .netease:
-            // 音视频全损双管齐下
+            // 音视频全损：视频马赛克 + 音频烂到几乎听不清
             return ProcessingParameters(
-                targetWidth: 100, targetFrameRate: 8, videoBitrate: 250_000,
+                targetWidth: 110, targetFrameRate: 8, videoBitrate: 250_000,
                 saturation: 0.35, contrast: 1.5, brightness: -0.06,
-                noiseIntensity: 0.5, chromaShiftPixels: 4, scanlineAlpha: 0.08,
-                audioLowFreq: 300, audioHighFreq: 3000, audioSampleRate: 8000, backgroundNoiseLevel: 0.4
+                noiseIntensity: 0.5, chromaShiftPixels: 0, scanlineAlpha: 0,
+                audioLowFreq: 600, audioHighFreq: 2500, audioSampleRate: 8000, backgroundNoiseLevel: 0.45
             )
         }
     }
 
-    /// 高档（100%）：拉满效果，仍保证编码安全（targetWidth≥35, bitrate≥100k after guard）
+    /// 高档（100%）：拉满效果，编码安全
     var highParameters: ProcessingParameters {
         switch self {
         case .egg:
-            // 极致大块马赛克，原色不动
+            // 极致大块马赛克，原色不动，音频极度压缩
             return ProcessingParameters(
                 targetWidth: 40, targetFrameRate: 5, videoBitrate: 120_000,
                 saturation: 1.0, contrast: 1.05, brightness: 0,
                 noiseIntensity: 0.25, chromaShiftPixels: 0, scanlineAlpha: 0,
-                audioLowFreq: 300, audioHighFreq: 4000, audioSampleRate: 16000, backgroundNoiseLevel: 0.15
+                audioLowFreq: 500, audioHighFreq: 2500, audioSampleRate: 8000, backgroundNoiseLevel: 0.25
             )
         case .rain:
-            // 拉到几乎纯色块，不可辨认
+            // 拉到纯色块，不碰色彩，音频只剩失真中高频
             return ProcessingParameters(
                 targetWidth: 35, targetFrameRate: 30, videoBitrate: 150_000,
-                saturation: 0.3, contrast: 1.8, brightness: -0.08,
-                noiseIntensity: 0.7, chromaShiftPixels: 10, scanlineAlpha: 0.25,
-                audioLowFreq: 100, audioHighFreq: 4000, audioSampleRate: 16000, backgroundNoiseLevel: 0.3
+                saturation: 1.0, contrast: 1.0, brightness: 0,
+                noiseIntensity: 0.7, chromaShiftPixels: 0, scanlineAlpha: 0,
+                audioLowFreq: 800, audioHighFreq: 2500, audioSampleRate: 8000, backgroundNoiseLevel: 0.35
             )
         case .netease:
-            // 彻底摧毁 — 最大安全范围内
+            // 彻底摧毁 — 视频严重马赛克 + 音频几乎不可辨认
             return ProcessingParameters(
-                targetWidth: 40, targetFrameRate: 6, videoBitrate: 100_000,
+                targetWidth: 55, targetFrameRate: 6, videoBitrate: 120_000,
                 saturation: 0.1, contrast: 2.0, brightness: -0.1,
-                noiseIntensity: 0.8, chromaShiftPixels: 8, scanlineAlpha: 0.15,
-                audioLowFreq: 500, audioHighFreq: 2000, audioSampleRate: 8000, backgroundNoiseLevel: 0.7
+                noiseIntensity: 0.7, chromaShiftPixels: 0, scanlineAlpha: 0,
+                audioLowFreq: 800, audioHighFreq: 2000, audioSampleRate: 8000, backgroundNoiseLevel: 0.7
             )
         }
     }
@@ -136,15 +138,9 @@ enum VideoPreset: String, CaseIterable, Identifiable {
         }
     }
 
-    // MARK: - 特效开关
+    // MARK: - 特效开关（全部关闭，纯靠分辨率缩放 + 噪声 + 对比度出效果）
 
-    func shouldEnableChromaShift() -> Bool {
-        self == .rain || self == .netease
-    }
-
-    func shouldEnableScanlines() -> Bool {
-        self == .rain || self == .netease
-    }
-
+    func shouldEnableChromaShift() -> Bool { false }
+    func shouldEnableScanlines() -> Bool { false }
     func shouldEnableTimestamp() -> Bool { false }
 }

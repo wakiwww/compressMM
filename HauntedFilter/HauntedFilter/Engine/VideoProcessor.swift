@@ -182,13 +182,14 @@ class VideoProcessor: ObservableObject {
                 print("✅ 音频读取器已添加")
             }
 
-            // 音频写入器输入设置 — 确保采样率是合法的 AAC 编码值
+            // 音频写入器输入设置 — 采样率 + 码率均降质
             let safeSampleRate = Self.nearestValidAACSampleRate(for: parameters.audioSampleRate)
+            let audioBitrate = max(24_000, Int(safeSampleRate * 2.5))  // 8kHz→24kbps, 11kHz→27kbps, 极低码率
             let audioWriterSettings: [String: Any] = [
                 AVFormatIDKey: kAudioFormatMPEG4AAC,
                 AVSampleRateKey: safeSampleRate,
-                AVNumberOfChannelsKey: 2,
-                AVEncoderBitRateKey: 128_000
+                AVNumberOfChannelsKey: 1,         // 单声道增加复古感
+                AVEncoderBitRateKey: audioBitrate
             ]
 
             audioWriterInput = AVAssetWriterInput(

@@ -267,6 +267,30 @@ struct MainView: View {
                     .font(.system(size: 12, weight: .regular, design: .default))
                     .foregroundColor(Color(hex: "#888888"))
             }
+
+            // 原汁原味压缩量 — 一键设到当前模式的甜点位
+            Button {
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    viewModel.intensity = viewModel.selectedPreset.sweetSpotIntensity
+                }
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "target")
+                        .font(.system(size: 12))
+                    Text("原汁原味压缩量")
+                        .font(.system(size: 13, weight: .medium, design: .default))
+                    Text("(\(Int(viewModel.selectedPreset.sweetSpotIntensity))%)")
+                        .font(.system(size: 11, weight: .regular, design: .monospaced))
+                        .foregroundColor(Color(hex: "#888888"))
+                }
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(Color.white.opacity(0.3), lineWidth: 1)
+                )
+            }
         }
         .padding(16)
         .background(

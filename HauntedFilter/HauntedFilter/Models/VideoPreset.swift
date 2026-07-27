@@ -1,13 +1,10 @@
 import Foundation
 
-/// 视频降质模式枚举 — 6 种阴间风格
+/// 视频降质模式 — 3 种风格
 enum VideoPreset: String, CaseIterable, Identifiable {
-    case basement    // 地下录像
-    case vhs         // 磁带损坏
-    case signal      // 深海信号
-    case fallout     // 核辐射
-    case dialup      // 古早网络
-    case broadcast   // 末世广播
+    case egg       // 鸡蛋 — 极低帧率马赛克，保留原色
+    case rain      // 雨夜骑行男 — 满帧极端马赛克，不可辨认
+    case netease   // 岡易云vip — 音视频全损，双管齐下
 
     var id: String { rawValue }
 
@@ -15,211 +12,119 @@ enum VideoPreset: String, CaseIterable, Identifiable {
 
     var displayName: String {
         switch self {
-        case .basement:  return "地下录像"
-        case .vhs:       return "磁带损坏"
-        case .signal:    return "深海信号"
-        case .fallout:   return "核辐射"
-        case .dialup:    return "古早网络"
-        case .broadcast: return "末世广播"
+        case .egg:     return "鸡蛋"
+        case .rain:    return "雨夜骑行男"
+        case .netease: return "岡易云vip"
         }
     }
 
     var englishName: String {
         switch self {
-        case .basement:  return "BASEMENT"
-        case .vhs:       return "VHS"
-        case .signal:    return "SIGNAL"
-        case .fallout:   return "FALLOUT"
-        case .dialup:    return "DIALUP"
-        case .broadcast: return "BROADCAST"
+        case .egg:     return "EGG"
+        case .rain:    return "RAIN"
+        case .netease: return "NETEASE"
         }
     }
 
     var subtitle: String {
         switch self {
-        case .basement:  return "超低码率 · 块状压缩噪声 · 8kHz音频"
-        case .vhs:       return "模拟抖动 · 色彩偏移 · 扫描线"
-        case .signal:    return "马赛克 · 帧丢失 · 随机花屏"
-        case .fallout:   return "严重过曝 · 高对比 · 颗粒感"
-        case .dialup:    return "极低分辨率 · 高压缩 · 低帧率"
-        case .broadcast: return "随机静帧 · 信号条纹 · 色偏"
+        case .egg:     return "5fps · 肉眼可见马赛克 · 保留原色"
+        case .rain:    return "30fps · 极端像素化 · 不可辨认"
+        case .netease: return "音质全损 · 视频全损 · 双管齐下"
         }
     }
 
     var iconName: String {
         switch self {
-        case .basement:  return "house.fill"
-        case .vhs:       return "waveform"
-        case .signal:    return "dot.radiowaves.left.and.right"
-        case .fallout:   return "bolt.fill"
-        case .dialup:    return "phone.down.fill"
-        case .broadcast: return "radio.fill"
+        case .egg:     return "circle.grid.3x3.fill"
+        case .rain:    return "cloud.rain.fill"
+        case .netease: return "music.note.list"
         }
     }
 
-    /// 推荐压缩量
-    var recommendedIntensity: Float {
+    /// 原汁原味压缩量 — 一键出效果，同时保证编码安全
+    var sweetSpotIntensity: Float {
         switch self {
-        case .basement:  return 60
-        case .vhs:       return 55
-        case .signal:    return 65
-        case .fallout:   return 70
-        case .dialup:    return 62
-        case .broadcast: return 58
+        case .egg:     return 50
+        case .rain:    return 55
+        case .netease: return 50
         }
     }
 
     // MARK: - 参数定义
 
-    /// 基线参数（intensity=0%，轻微效果起点）
+    /// 基线（0%）：极轻微效果
     var baselineParameters: ProcessingParameters {
-        switch self {
-        case .basement:
-            return ProcessingParameters(
-                targetWidth: 640, targetFrameRate: 24, videoBitrate: 2_000_000,
-                saturation: 0.95, contrast: 1.0, brightness: 0,
-                noiseIntensity: 0.02, chromaShiftPixels: 0, scanlineAlpha: 0,
-                audioLowFreq: 200, audioHighFreq: 8000, audioSampleRate: 44100, backgroundNoiseLevel: 0
-            )
-        case .vhs:
-            return ProcessingParameters(
-                targetWidth: 640, targetFrameRate: 24, videoBitrate: 2_000_000,
-                saturation: 1.0, contrast: 1.0, brightness: 0,
-                noiseIntensity: 0.01, chromaShiftPixels: 2, scanlineAlpha: 0.05,
-                audioLowFreq: 200, audioHighFreq: 8000, audioSampleRate: 44100, backgroundNoiseLevel: 0.05
-            )
-        case .signal:
-            return ProcessingParameters(
-                targetWidth: 640, targetFrameRate: 24, videoBitrate: 2_000_000,
-                saturation: 0.9, contrast: 1.05, brightness: 0,
-                noiseIntensity: 0.03, chromaShiftPixels: 0, scanlineAlpha: 0,
-                audioLowFreq: 300, audioHighFreq: 6000, audioSampleRate: 44100, backgroundNoiseLevel: 0
-            )
-        case .fallout:
-            return ProcessingParameters(
-                targetWidth: 640, targetFrameRate: 24, videoBitrate: 2_000_000,
-                saturation: 0.85, contrast: 1.1, brightness: 0.05,
-                noiseIntensity: 0.04, chromaShiftPixels: 0, scanlineAlpha: 0,
-                audioLowFreq: 300, audioHighFreq: 6000, audioSampleRate: 44100, backgroundNoiseLevel: 0.03
-            )
-        case .dialup:
-            return ProcessingParameters(
-                targetWidth: 640, targetFrameRate: 24, videoBitrate: 2_000_000,
-                saturation: 0.9, contrast: 1.05, brightness: 0,
-                noiseIntensity: 0.03, chromaShiftPixels: 0, scanlineAlpha: 0,
-                audioLowFreq: 300, audioHighFreq: 6000, audioSampleRate: 44100, backgroundNoiseLevel: 0
-            )
-        case .broadcast:
-            return ProcessingParameters(
-                targetWidth: 640, targetFrameRate: 24, videoBitrate: 2_000_000,
-                saturation: 0.9, contrast: 1.05, brightness: 0,
-                noiseIntensity: 0.02, chromaShiftPixels: 1, scanlineAlpha: 0.03,
-                audioLowFreq: 200, audioHighFreq: 8000, audioSampleRate: 44100, backgroundNoiseLevel: 0.02
-            )
-        }
+        ProcessingParameters(
+            targetWidth: 640, targetFrameRate: 24, videoBitrate: 2_000_000,
+            saturation: 1.0, contrast: 1.0, brightness: 0,
+            noiseIntensity: 0, chromaShiftPixels: 0, scanlineAlpha: 0,
+            audioLowFreq: 20, audioHighFreq: 20000, audioSampleRate: 44100, backgroundNoiseLevel: 0
+        )
     }
 
-    /// 低强度参数（intensity=50%，显著降质）
+    /// 中档（50%）：原汁原味效果
     var lowParameters: ProcessingParameters {
         switch self {
-        case .basement:
+        case .egg:
+            // 5fps + 极低分辨率放缩 = 肉眼可见马赛克，保留原色
             return ProcessingParameters(
-                targetWidth: 320, targetFrameRate: 15, videoBitrate: 500_000,
-                saturation: 0.7, contrast: 1.1, brightness: -0.05,
-                noiseIntensity: 0.15, chromaShiftPixels: 0, scanlineAlpha: 0,
-                audioLowFreq: 200, audioHighFreq: 4000, audioSampleRate: 22050, backgroundNoiseLevel: 0.15
+                targetWidth: 140, targetFrameRate: 5, videoBitrate: 500_000,
+                saturation: 1.0, contrast: 1.0, brightness: 0,
+                noiseIntensity: 0.08, chromaShiftPixels: 0, scanlineAlpha: 0,
+                audioLowFreq: 200, audioHighFreq: 8000, audioSampleRate: 22050, backgroundNoiseLevel: 0.05
             )
-        case .vhs:
+        case .rain:
+            // 30fps 满帧，但极端低分辨率放大 → 完全不可辨认的像素块
             return ProcessingParameters(
-                targetWidth: 320, targetFrameRate: 20, videoBitrate: 800_000,
-                saturation: 1.1, contrast: 1.1, brightness: -0.02,
-                noiseIntensity: 0.08, chromaShiftPixels: 8, scanlineAlpha: 0.25,
-                audioLowFreq: 100, audioHighFreq: 6000, audioSampleRate: 32000, backgroundNoiseLevel: 0.15
+                targetWidth: 100, targetFrameRate: 30, videoBitrate: 500_000,
+                saturation: 0.7, contrast: 1.3, brightness: -0.03,
+                noiseIntensity: 0.3, chromaShiftPixels: 4, scanlineAlpha: 0.1,
+                audioLowFreq: 150, audioHighFreq: 6000, audioSampleRate: 22050, backgroundNoiseLevel: 0.1
             )
-        case .signal:
+        case .netease:
+            // 音视频全损
             return ProcessingParameters(
-                targetWidth: 240, targetFrameRate: 12, videoBitrate: 300_000,
-                saturation: 0.6, contrast: 1.15, brightness: -0.03,
-                noiseIntensity: 0.2, chromaShiftPixels: 0, scanlineAlpha: 0,
-                audioLowFreq: 400, audioHighFreq: 4000, audioSampleRate: 16000, backgroundNoiseLevel: 0.1
-            )
-        case .fallout:
-            return ProcessingParameters(
-                targetWidth: 360, targetFrameRate: 18, videoBitrate: 600_000,
-                saturation: 0.4, contrast: 1.4, brightness: 0.15,
-                noiseIntensity: 0.25, chromaShiftPixels: 0, scanlineAlpha: 0,
-                audioLowFreq: 300, audioHighFreq: 4000, audioSampleRate: 32000, backgroundNoiseLevel: 0.2
-            )
-        case .dialup:
-            return ProcessingParameters(
-                targetWidth: 200, targetFrameRate: 10, videoBitrate: 150_000,
-                saturation: 0.5, contrast: 1.2, brightness: -0.02,
-                noiseIntensity: 0.18, chromaShiftPixels: 0, scanlineAlpha: 0,
-                audioLowFreq: 300, audioHighFreq: 4000, audioSampleRate: 16000, backgroundNoiseLevel: 0.1
-            )
-        case .broadcast:
-            return ProcessingParameters(
-                targetWidth: 320, targetFrameRate: 15, videoBitrate: 400_000,
-                saturation: 0.6, contrast: 1.15, brightness: -0.02,
-                noiseIntensity: 0.12, chromaShiftPixels: 5, scanlineAlpha: 0.15,
-                audioLowFreq: 200, audioHighFreq: 4000, audioSampleRate: 22050, backgroundNoiseLevel: 0.15
+                targetWidth: 140, targetFrameRate: 8, videoBitrate: 300_000,
+                saturation: 0.4, contrast: 1.4, brightness: -0.05,
+                noiseIntensity: 0.35, chromaShiftPixels: 3, scanlineAlpha: 0.05,
+                audioLowFreq: 300, audioHighFreq: 3000, audioSampleRate: 8000, backgroundNoiseLevel: 0.3
             )
         }
     }
 
-    /// 高强度参数（intensity=100%，极致崩坏）
+    /// 高档（100%）：拉满效果，但仍保证编码安全
     var highParameters: ProcessingParameters {
         switch self {
-        case .basement:
+        case .egg:
+            // 极致马赛克，原色不动
             return ProcessingParameters(
-                targetWidth: 80, targetFrameRate: 5, videoBitrate: 50_000,
-                saturation: 0.2, contrast: 1.5, brightness: -0.1,
-                noiseIntensity: 0.6, chromaShiftPixels: 0, scanlineAlpha: 0,
-                audioLowFreq: 300, audioHighFreq: 2400, audioSampleRate: 8000, backgroundNoiseLevel: 0.5
+                targetWidth: 60, targetFrameRate: 5, videoBitrate: 150_000,
+                saturation: 1.0, contrast: 1.05, brightness: 0,
+                noiseIntensity: 0.15, chromaShiftPixels: 0, scanlineAlpha: 0,
+                audioLowFreq: 300, audioHighFreq: 4000, audioSampleRate: 16000, backgroundNoiseLevel: 0.1
             )
-        case .vhs:
+        case .rain:
+            // 拉到几乎纯色块
             return ProcessingParameters(
-                targetWidth: 160, targetFrameRate: 12, videoBitrate: 200_000,
-                saturation: 1.3, contrast: 1.3, brightness: -0.05,
-                noiseIntensity: 0.2, chromaShiftPixels: 18, scanlineAlpha: 0.6,
-                audioLowFreq: 80, audioHighFreq: 4000, audioSampleRate: 16000, backgroundNoiseLevel: 0.4
+                targetWidth: 50, targetFrameRate: 30, videoBitrate: 200_000,
+                saturation: 0.4, contrast: 1.6, brightness: -0.05,
+                noiseIntensity: 0.5, chromaShiftPixels: 8, scanlineAlpha: 0.2,
+                audioLowFreq: 100, audioHighFreq: 4000, audioSampleRate: 16000, backgroundNoiseLevel: 0.2
             )
-        case .signal:
+        case .netease:
+            // 彻底摧毁
             return ProcessingParameters(
-                targetWidth: 80, targetFrameRate: 6, videoBitrate: 60_000,
-                saturation: 0.15, contrast: 1.5, brightness: -0.1,
-                noiseIntensity: 0.5, chromaShiftPixels: 0, scanlineAlpha: 0,
-                audioLowFreq: 500, audioHighFreq: 2000, audioSampleRate: 8000, backgroundNoiseLevel: 0.3
-            )
-        case .fallout:
-            return ProcessingParameters(
-                targetWidth: 200, targetFrameRate: 10, videoBitrate: 150_000,
-                saturation: 0.05, contrast: 2.0, brightness: 0.3,
-                noiseIntensity: 0.7, chromaShiftPixels: 0, scanlineAlpha: 0,
-                audioLowFreq: 300, audioHighFreq: 2000, audioSampleRate: 16000, backgroundNoiseLevel: 0.6
-            )
-        case .dialup:
-            return ProcessingParameters(
-                targetWidth: 60, targetFrameRate: 5, videoBitrate: 40_000,
-                saturation: 0.15, contrast: 1.5, brightness: -0.08,
-                noiseIntensity: 0.55, chromaShiftPixels: 0, scanlineAlpha: 0,
-                audioLowFreq: 400, audioHighFreq: 3000, audioSampleRate: 8000, backgroundNoiseLevel: 0.35
-            )
-        case .broadcast:
-            return ProcessingParameters(
-                targetWidth: 120, targetFrameRate: 8, videoBitrate: 80_000,
-                saturation: 0.2, contrast: 1.4, brightness: -0.08,
-                noiseIntensity: 0.4, chromaShiftPixels: 12, scanlineAlpha: 0.4,
-                audioLowFreq: 300, audioHighFreq: 3000, audioSampleRate: 8000, backgroundNoiseLevel: 0.45
+                targetWidth: 60, targetFrameRate: 6, videoBitrate: 120_000,
+                saturation: 0.15, contrast: 1.8, brightness: -0.08,
+                noiseIntensity: 0.6, chromaShiftPixels: 6, scanlineAlpha: 0.1,
+                audioLowFreq: 400, audioHighFreq: 2000, audioSampleRate: 8000, backgroundNoiseLevel: 0.5
             )
         }
     }
 
-    // MARK: - 插值计算
+    // MARK: - 插值
 
-    /// 根据强度获取插值后的参数
-    /// - intensity 0-50: baseline → low
-    /// - intensity 50-100: low → high
     func parameters(for intensity: Float) -> ProcessingParameters {
         let clamped = max(0, min(100, intensity))
         if clamped <= 50 {
@@ -234,14 +139,12 @@ enum VideoPreset: String, CaseIterable, Identifiable {
     // MARK: - 特效开关
 
     func shouldEnableChromaShift() -> Bool {
-        self == .vhs || self == .broadcast
+        self == .rain || self == .netease
     }
 
     func shouldEnableScanlines() -> Bool {
-        self == .vhs || self == .broadcast
+        self == .rain || self == .netease
     }
 
-    func shouldEnableTimestamp() -> Bool {
-        false  // 设计文档中未要求时间戳
-    }
+    func shouldEnableTimestamp() -> Bool { false }
 }

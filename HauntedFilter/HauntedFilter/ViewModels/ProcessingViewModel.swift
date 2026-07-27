@@ -11,7 +11,7 @@ class ProcessingViewModel: ObservableObject {
     @Published var outputURL: URL?
     @Published var isProcessing = false
     @Published var progress: Double = 0
-    @Published var selectedPreset: VideoPreset = .basement {
+    @Published var selectedPreset: VideoPreset = .egg {
         didSet { recalculateEstimation() }
     }
     @Published var intensity: Float = 50 {

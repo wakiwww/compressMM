@@ -56,15 +56,12 @@ struct FilterChainBuilder {
             }
         }
 
-        // 3. 偏色（通道偏移）— 按预设应用不同色调
+        // 3. 偏色（通道偏移）— 按预设应用不同色调（EGG 保留原色不做处理）
         let colorTint: (r: Float, g: Float, b: Float)? = {
             switch preset {
-            case .basement:  return (1.0, 0.85, 0.7)   // 昏暗地下偏黄绿
-            case .vhs:       return (1.1, 0.95, 0.8)   // 磁带暖色偏淡
-            case .signal:    return (0.7, 1.0, 0.7)    // 深海偏青绿
-            case .fallout:   return (1.2, 0.8, 0.6)    // 核辐射暖黄过曝
-            case .dialup:    return (0.8, 0.8, 1.0)    // 古早网络偏蓝
-            case .broadcast: return (1.0, 0.75, 0.65)  // 末世偏橙褐
+            case .egg:     return nil                    // 鸡蛋：保留原色
+            case .rain:    return (0.9, 0.85, 0.95)     // 雨夜：冷蓝灰调
+            case .netease: return (0.85, 0.8, 0.7)      // 岡易云：复古褪色
             }
         }()
         if let tint = colorTint {

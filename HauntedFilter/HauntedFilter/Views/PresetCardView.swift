@@ -45,9 +45,9 @@ struct PresetCardView: View {
 
 #Preview {
     HStack(spacing: 12) {
-        PresetCardView(preset: .basement, isSelected: true)
-        PresetCardView(preset: .vhs, isSelected: false)
-        PresetCardView(preset: .signal, isSelected: false)
+        PresetCardView(preset: .egg, isSelected: true)
+        PresetCardView(preset: .rain, isSelected: false)
+        PresetCardView(preset: .netease, isSelected: false)
     }
     .padding()
     .background(Color.black)

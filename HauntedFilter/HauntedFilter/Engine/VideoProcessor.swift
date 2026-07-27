@@ -360,9 +360,12 @@ class VideoProcessor: ObservableObject {
                 }
 
                 processedFrames += 1
-                let progressValue = min(0.99, Double(processedFrames) / Double(max(estimatedTotalFrames, 1)))
-                DispatchQueue.main.async { [weak self] in
-                    self?.progress = progressValue
+                // 每 5 帧更新一次进度，让进度条有可见的加载过程
+                if processedFrames % 5 == 0 {
+                    let progressValue = min(0.99, Double(processedFrames) / Double(max(estimatedTotalFrames, 1)))
+                    DispatchQueue.main.async { [weak self] in
+                        self?.progress = progressValue
+                    }
                 }
             }
 

@@ -2,6 +2,7 @@ import Foundation
 import SwiftUI
 import PhotosUI
 import AVFoundation
+import Combine
 
 /// 处理管线协调 ViewModel — 统一管理导航状态，消除 onChange 时序问题
 @MainActor
@@ -47,6 +48,7 @@ class ProcessingViewModel: ObservableObject {
     private var cachedDuration: TimeInterval = 0
 
     private let processor = VideoProcessor()
+    private var cancellables = Set<AnyCancellable>()
 
     // MARK: - 处理生命周期
 
@@ -70,6 +72,15 @@ class ProcessingViewModel: ObservableObject {
         progress = 0
         outputURL = nil
         navigationStep = .processing
+        cancellables.removeAll()
+
+        // 同步 processor 的进度到 viewModel
+        processor.$progress
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] value in
+                self?.progress = value
+            }
+            .store(in: &cancellables)
 
         processor.processVideo(
             sourceURL: sourceURL,
@@ -79,7 +90,9 @@ class ProcessingViewModel: ObservableObject {
             DispatchQueue.main.async {
                 guard let self = self else { return }
 
+                self.progress = 1.0
                 self.isProcessing = false
+                self.cancellables.removeAll()
 
                 switch result {
                 case .success(let url):
@@ -113,6 +126,17 @@ class ProcessingViewModel: ObservableObject {
         sourceFileSize = 0
         sourceFileSizeFormatted = ""
         encodingWarning = nil
+        cancellables.removeAll()
+    }
+
+    /// 重新处理：保留已导入的视频，仅清除输出结果，返回编辑页
+    func reprocess() {
+        outputURL = nil
+        isProcessing = false
+        progress = 0
+        errorMessage = nil
+        navigationStep = nil
+        cancellables.removeAll()
     }
 
     func didSelectVideo(url: URL) {

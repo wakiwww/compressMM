@@ -106,7 +106,27 @@ struct PlayerView: View {
                 }
                 .padding(.horizontal, 20)
 
-                // 再来一个
+                // 重新处理（保留视频，回编辑页调整参数）
+                Button {
+                    viewModel.reprocess()
+                    dismiss()
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "arrow.counterclockwise")
+                            .font(.system(size: 12))
+                        Text("重新处理")
+                            .font(.system(size: 15, weight: .medium, design: .default))
+                    }
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(Color.white.opacity(0.4), lineWidth: 1)
+                    )
+                }
+
+                // 再来一个（清空视频，重新导入）
                 Button {
                     viewModel.reset()
                     dismiss()
@@ -119,7 +139,7 @@ struct PlayerView: View {
                     }
                     .foregroundColor(Color(hex: "#888888"))
                 }
-                .padding(.top, 8)
+                .padding(.top, 4)
 
                 Spacer()
                     .frame(height: 24)

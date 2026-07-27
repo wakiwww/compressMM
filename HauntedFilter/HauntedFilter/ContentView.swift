@@ -2,6 +2,20 @@ import SwiftUI
 import PhotosUI
 import Photos
 
+// MARK: - 导航步骤（单一状态，避免多个 Bool 冲突）
+
+enum NavigationStep: Hashable, Identifiable {
+    case processing
+    case done(URL)
+
+    var id: String {
+        switch self {
+        case .processing: return "processing"
+        case .done: return "done"
+        }
+    }
+}
+
 // MARK: - Hex Color 扩展
 
 extension Color {
@@ -25,24 +39,22 @@ extension Color {
 struct ContentView: View {
     @StateObject private var viewModel = ProcessingViewModel()
     @State private var showPicker = false
-    @State private var navigateToPlayer = false
-    @State private var navigateToProgress = false
+    @State private var navigation: NavigationStep?
 
     var body: some View {
         NavigationStack {
             MainView(
                 viewModel: viewModel,
                 showPicker: $showPicker,
-                navigateToPlayer: $navigateToPlayer,
-                navigateToProgress: $navigateToProgress
+                navigation: $navigation
             )
-            .navigationDestination(isPresented: $navigateToPlayer) {
-                if let outputURL = viewModel.outputURL {
-                    PlayerView(videoURL: outputURL, viewModel: viewModel)
+            .navigationDestination(item: $navigation) { step in
+                switch step {
+                case .processing:
+                    ProcessingProgressView(viewModel: viewModel, navigation: $navigation)
+                case .done(let url):
+                    PlayerView(videoURL: url, viewModel: viewModel)
                 }
-            }
-            .navigationDestination(isPresented: $navigateToProgress) {
-                ProcessingProgressView(viewModel: viewModel)
             }
             .photosPicker(
                 isPresented: $showPicker,

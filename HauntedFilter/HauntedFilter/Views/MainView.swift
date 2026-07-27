@@ -5,8 +5,7 @@ import PhotosUI
 struct MainView: View {
     @ObservedObject var viewModel: ProcessingViewModel
     @Binding var showPicker: Bool
-    @Binding var navigateToPlayer: Bool
-    @Binding var navigateToProgress: Bool
+    @Binding var navigation: NavigationStep?
 
     @State private var showIntensityWarning = false
     @State private var showIntensityAlert = false
@@ -66,11 +65,12 @@ struct MainView: View {
         } message: {
             Text(viewModel.errorMessage ?? "未知错误")
         }
-        .onChange(of: viewModel.isProcessing) { newValue in
-            if newValue { navigateToProgress = true }
-        }
-        .onChange(of: viewModel.outputURL) { newValue in
-            if newValue != nil { navigateToPlayer = true }
+        .onChange(of: viewModel.isProcessing) { isProcessing in
+            if isProcessing {
+                navigation = .processing
+            } else if let url = viewModel.outputURL {
+                navigation = .done(url)
+            }
         }
         .onChange(of: viewModel.intensity) { newVal in
             updateWarning(for: newVal)
@@ -602,8 +602,7 @@ enum SaveLocation: String, CaseIterable {
     MainView(
         viewModel: ProcessingViewModel(),
         showPicker: .constant(false),
-        navigateToPlayer: .constant(false),
-        navigateToProgress: .constant(false)
+        navigation: .constant(nil)
     )
     .preferredColorScheme(.dark)
 }

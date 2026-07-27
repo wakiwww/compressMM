@@ -107,15 +107,20 @@ class VideoProcessor: ObservableObject {
             throw ProcessingError.noVideoTrack
         }
 
-        // 异步加载视频属性
+        // 异步加载视频属性（含方向矫正）
         let naturalSize = try await videoTrack.load(.naturalSize)
         let frameRate = try await videoTrack.load(.nominalFrameRate)
+        let preferredTransform = try await videoTrack.load(.preferredTransform)
 
-        // 如果无法获取尺寸或帧率，使用默认值
-        let finalSourceSize = naturalSize != .zero ? naturalSize : CGSize(width: 1920, height: 1080)
+        // 判断视频是否为竖屏（90° 旋转）
+        let isPortrait = abs(preferredTransform.b) == 1.0 && abs(preferredTransform.c) == 1.0
+        let correctedSize = isPortrait
+            ? CGSize(width: naturalSize.height, height: naturalSize.width)
+            : naturalSize
+        let finalSourceSize = correctedSize != .zero ? correctedSize : CGSize(width: 1920, height: 1080)
         let finalSourceFrameRate = frameRate > 0 ? frameRate : 30.0
 
-        print("🔍 视频处理设置：尺寸=\(finalSourceSize.width)x\(finalSourceSize.height), 帧率=\(finalSourceFrameRate) FPS")
+        print("🔍 视频处理设置：尺寸=\(finalSourceSize.width)x\(finalSourceSize.height) (\(isPortrait ? "竖屏" : "横屏")), 帧率=\(finalSourceFrameRate) FPS")
 
         // 加载音频轨道
         let audioTracks = try await asset.loadTracks(withMediaType: .audio)
@@ -152,6 +157,7 @@ class VideoProcessor: ObservableObject {
         ]
         let writerInput = AVAssetWriterInput(mediaType: .video, outputSettings: videoCompressionSettings)
         writerInput.expectsMediaDataInRealTime = false
+        writerInput.transform = preferredTransform  // 保留原始视频方向
         writer.add(writerInput)
 
         // --- 音频设置 ---

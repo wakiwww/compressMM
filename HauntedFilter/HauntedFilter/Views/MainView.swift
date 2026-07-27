@@ -5,7 +5,6 @@ import PhotosUI
 struct MainView: View {
     @ObservedObject var viewModel: ProcessingViewModel
     @Binding var showPicker: Bool
-    @Binding var navigation: NavigationStep?
 
     @State private var showIntensityWarning = false
     @State private var showIntensityAlert = false
@@ -41,6 +40,11 @@ struct MainView: View {
                 // 输出设置
                 outputSettingsSection
 
+                // 编码安全警告（实时显示，防止用户拉到无法编码的程度）
+                if let warning = viewModel.encodingWarning {
+                    encodingWarningBanner(warning)
+                }
+
                 // 处理按钮
                 processButton
             }
@@ -64,17 +68,6 @@ struct MainView: View {
             Button("确定", role: .cancel) { }
         } message: {
             Text(viewModel.errorMessage ?? "未知错误")
-        }
-        .onChange(of: viewModel.isProcessing) { isProcessing in
-            DispatchQueue.main.async {
-                if isProcessing {
-                    navigation = .processing
-                } else if let url = viewModel.outputURL {
-                    navigation = .done(url)
-                } else {
-                    navigation = nil  // 取消或失败，返回主页
-                }
-            }
         }
         .onChange(of: viewModel.intensity) { newVal in
             updateWarning(for: newVal)
@@ -523,9 +516,30 @@ struct MainView: View {
                     .fill(viewModel.sourceVideoURL != nil ? Color.white : Color(hex: "#1A1A1A"))
             )
         }
-        .disabled(viewModel.sourceVideoURL == nil || viewModel.isProcessing)
+        .disabled(viewModel.sourceVideoURL == nil || viewModel.isProcessing || viewModel.encodingWarning != nil)
         .padding(.top, 8)
         .padding(.bottom, 32)
+    }
+
+    // MARK: - 编码安全警告
+
+    private func encodingWarningBanner(_ message: String) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 14))
+                .foregroundColor(Color(hex: "#FF3B30"))
+
+            Text(message)
+                .font(.system(size: 13, weight: .regular, design: .default))
+                .foregroundColor(.white.opacity(0.9))
+                .lineLimit(4)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color(hex: "#FF3B30").opacity(0.15))
+        )
     }
 
     // MARK: - 警告逻辑
@@ -629,8 +643,7 @@ enum SaveLocation: String, CaseIterable {
 #Preview {
     MainView(
         viewModel: ProcessingViewModel(),
-        showPicker: .constant(false),
-        navigation: .constant(nil)
+        showPicker: .constant(false)
     )
     .preferredColorScheme(.dark)
 }

@@ -2,7 +2,7 @@ import SwiftUI
 import PhotosUI
 import Photos
 
-// MARK: - 导航步骤（单一状态，避免多个 Bool 冲突）
+// MARK: - 导航步骤
 
 enum NavigationStep: Hashable, Identifiable {
     case processing
@@ -39,19 +39,17 @@ extension Color {
 struct ContentView: View {
     @StateObject private var viewModel = ProcessingViewModel()
     @State private var showPicker = false
-    @State private var navigation: NavigationStep?
 
     var body: some View {
         NavigationStack {
             MainView(
                 viewModel: viewModel,
-                showPicker: $showPicker,
-                navigation: $navigation
+                showPicker: $showPicker
             )
-            .navigationDestination(item: $navigation) { step in
+            .navigationDestination(item: $viewModel.navigationStep) { step in
                 switch step {
                 case .processing:
-                    ProcessingProgressView(viewModel: viewModel, navigation: $navigation)
+                    ProcessingProgressView(viewModel: viewModel)
                 case .done(let url):
                     PlayerView(videoURL: url, viewModel: viewModel)
                 }
@@ -78,8 +76,6 @@ struct ContentView: View {
         }
         .preferredColorScheme(.dark)
     }
-
-    // MARK: - 视频 URL 加载
 
     private func loadVideoURL(from item: PhotosPickerItem) async throws -> URL? {
         if let url = try? await item.loadTransferable(type: URL.self) {

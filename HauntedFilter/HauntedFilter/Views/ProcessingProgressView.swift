@@ -3,7 +3,6 @@ import SwiftUI
 /// 处理进度视图 — 极简黑白科技感
 struct ProcessingProgressView: View {
     @ObservedObject var viewModel: ProcessingViewModel
-    @Binding var navigation: NavigationStep?
     @State private var ellipsis = ""
 
     private let timer = Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()
@@ -64,7 +63,6 @@ struct ProcessingProgressView: View {
                 // 取消按钮
                 Button {
                     viewModel.cancelProcessing()
-                    navigation = nil
                 } label: {
                     Text("取消")
                         .font(.system(size: 15, weight: .regular, design: .default))
@@ -88,6 +86,6 @@ struct ProcessingProgressView: View {
 #Preview {
     let vm = ProcessingViewModel()
     vm.progress = 0.45
-    return ProcessingProgressView(viewModel: vm, navigation: .constant(nil))
+    return ProcessingProgressView(viewModel: vm)
         .preferredColorScheme(.dark)
 }

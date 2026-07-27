@@ -3,7 +3,7 @@ import SwiftUI
 import PhotosUI
 import AVFoundation
 
-/// 处理管线协调 ViewModel
+/// 处理管线协调 ViewModel — 统一管理导航状态，消除 onChange 时序问题
 @MainActor
 class ProcessingViewModel: ObservableObject {
     @Published var selectedItem: PhotosPickerItem?
@@ -20,14 +20,18 @@ class ProcessingViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var showError = false
 
-    // MARK: - 预估大小 & 警告
+    // MARK: - 导航（直接驱动 NavigationStack，避免 onChange 冲突）
+    @Published var navigationStep: NavigationStep?
+
+    // MARK: - 预估大小
     @Published var estimatedOutputSize: String = "未知"
-    @Published var showOverCompressionAlert = false
     @Published var compressionRatio: Float = 0
     @Published var sourceFileSize: UInt64 = 0
     @Published var sourceFileSizeFormatted: String = ""
-    @Published var alertMessage: String = ""
     @Published var videoDuration: String?
+
+    // MARK: - 编码安全预估
+    @Published var encodingWarning: String?
 
     // MARK: - 音频控制
     @Published var audioExpanded = true
@@ -39,12 +43,13 @@ class ProcessingViewModel: ObservableObject {
     @Published var outputFrameRate: OutputFrameRate = .followMode
     @Published var saveLocation: SaveLocation = .photoLibrary
 
-    /// 缓存视频时长（异步加载，供 checkOverCompression 同步使用）
+    /// 缓存视频时长
     private var cachedDuration: TimeInterval = 0
 
     private let processor = VideoProcessor()
 
-    /// 开始处理视频
+    // MARK: - 处理生命周期
+
     func startProcessing() {
         guard let sourceURL = sourceVideoURL else {
             errorMessage = "请先选择视频"
@@ -52,9 +57,19 @@ class ProcessingViewModel: ObservableObject {
             return
         }
 
+        let params = selectedPreset.parameters(for: intensity)
+
+        // 预检：编码安全
+        if let warning = validateEncodingParams(params) {
+            errorMessage = warning
+            showError = true
+            return
+        }
+
         isProcessing = true
         progress = 0
         outputURL = nil
+        navigationStep = .processing
 
         processor.processVideo(
             sourceURL: sourceURL,
@@ -69,21 +84,22 @@ class ProcessingViewModel: ObservableObject {
                 switch result {
                 case .success(let url):
                     self.outputURL = url
+                    self.navigationStep = .done(url)
                 case .failure(let error):
                     self.errorMessage = error.localizedDescription
                     self.showError = true
+                    self.navigationStep = nil
                 }
             }
         }
     }
 
-    /// 取消处理
     func cancelProcessing() {
         processor.cancel()
         isProcessing = false
+        navigationStep = nil
     }
 
-    /// 重置状态
     func reset() {
         selectedItem = nil
         sourceVideoURL = nil
@@ -91,19 +107,19 @@ class ProcessingViewModel: ObservableObject {
         isProcessing = false
         progress = 0
         errorMessage = nil
+        navigationStep = nil
         estimatedOutputSize = "未知"
         compressionRatio = 0
         sourceFileSize = 0
         sourceFileSizeFormatted = ""
+        encodingWarning = nil
     }
 
-    /// 导入视频后更新源文件信息
     func didSelectVideo(url: URL) {
         sourceVideoURL = url
         let attrs = try? FileManager.default.attributesOfItem(atPath: url.path)
         sourceFileSize = attrs?[.size] as? UInt64 ?? 0
         sourceFileSizeFormatted = formatFileSize(sourceFileSize)
-        // 异步加载时长并缓存
         Task {
             let asset = AVURLAsset(url: url)
             if let duration = try? await asset.load(.duration).seconds,
@@ -119,41 +135,57 @@ class ProcessingViewModel: ObservableObject {
         recalculateEstimation()
     }
 
+    // MARK: - 编码安全预检
+
+    /// 返回 nil 表示安全，返回警告文案表示可能失败
+    func validateEncodingParams(_ params: ProcessingParameters) -> String? {
+        // 分辨率过低 → Core Image 可能产出无效帧
+        if params.targetWidth < 35 {
+            return "目标分辨率过低（\(params.targetWidth)px），编码器可能无法处理。请适当降低阴间程度。"
+        }
+        // 帧率过低 → 关键帧间隔非法
+        if params.targetFrameRate < 3 {
+            return "目标帧率过低（\(Int(params.targetFrameRate))fps），编码器可能拒绝。请适当降低阴间程度。"
+        }
+        // 码率过低
+        if params.videoBitrate < 50_000 {
+            return "目标码率过低（\(params.videoBitrate / 1000)kbps），无法编码。请适当降低阴间程度。"
+        }
+        return nil
+    }
+
+    /// 实时更新编码安全警告（滑块拖动时调用）
+    func updateEncodingWarning() {
+        let params = selectedPreset.parameters(for: intensity)
+        encodingWarning = validateEncodingParams(params)
+    }
+
     // MARK: - 预估大小
 
     func recalculateEstimation() {
+        updateEncodingWarning()
+
         guard let url = sourceVideoURL else {
             estimatedOutputSize = "未知"
             return
         }
 
         let asset = AVURLAsset(url: url)
-
-        // 异步加载duration
         Task {
             do {
                 let duration = try await asset.load(.duration).seconds
                 guard duration > 0, !duration.isNaN else {
-                    await MainActor.run {
-                        estimatedOutputSize = "无法估算"
-                    }
+                    await MainActor.run { estimatedOutputSize = "无法估算" }
                     return
                 }
 
                 let params = selectedPreset.parameters(for: intensity)
-
-                // 视频部分: bitrate(bps) / 8 * 时长 * 校正因子
                 let videoBytes = Double(params.videoBitrate) / 8.0 * duration * 0.9
-
-                // 音频部分: AAC 编码近似
                 let audioBytes = params.audioSampleRate * 2.0 * duration * 0.3
-
                 let totalBytes = videoBytes + audioBytes
 
                 await MainActor.run {
                     estimatedOutputSize = formatFileSize(UInt64(totalBytes))
-
-                    // 压缩比
                     guard sourceFileSize > 0 else {
                         compressionRatio = 0
                         return
@@ -163,42 +195,9 @@ class ProcessingViewModel: ObservableObject {
             } catch {
                 await MainActor.run {
                     estimatedOutputSize = "无法估算"
-                    print("无法加载duration: \(error)")
                 }
             }
         }
-    }
-
-    /// 检查是否过度压缩（调用方在 UI 层判断）
-    func checkOverCompression() -> Bool {
-        guard sourceFileSize > 0, compressionRatio > 0 else { return false }
-
-        // 动态阈值：根据视频时长调整
-        // 短视频(≤10s)更宽容: 5%, 长视频(>60s)更保守: 12%
-        let duration = cachedDuration
-        guard duration > 0 else { return false }
-        let threshold: Float
-        if duration <= 10 {
-            threshold = 0.05
-        } else if duration >= 60 {
-            threshold = 0.12
-        } else {
-            // 线性插值 10s→0.05, 60s→0.12
-            threshold = 0.05 + Float((duration - 10) / 50) * 0.07
-        }
-
-        return compressionRatio < threshold
-    }
-
-    /// 生成警告文案
-    func generateAlertMessage() -> String {
-        let ratioPercent = Int((1 - compressionRatio) * 100)
-        return """
-        调这么高你要把视频压没吗？
-        原始大小：\(sourceFileSizeFormatted)
-        预估大小：\(estimatedOutputSize)
-        压缩率：\(ratioPercent)%
-        """
     }
 
     // MARK: - Helpers

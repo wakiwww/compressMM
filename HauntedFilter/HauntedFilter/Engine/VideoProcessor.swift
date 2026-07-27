@@ -112,13 +112,10 @@ class VideoProcessor: ObservableObject {
         let frameRate = try await videoTrack.load(.nominalFrameRate)
         let preferredTransform = try await videoTrack.load(.preferredTransform)
 
-        // 判断视频是否为竖屏（90° 旋转）
-        let isPortrait = abs(preferredTransform.b) == 1.0 && abs(preferredTransform.c) == 1.0
-        let correctedSize = isPortrait
-            ? CGSize(width: naturalSize.height, height: naturalSize.width)
-            : naturalSize
-        let finalSourceSize = correctedSize != .zero ? correctedSize : CGSize(width: 1920, height: 1080)
+        // 始终使用自然像素尺寸编码；preferredTransform 负责方向
+        let finalSourceSize = naturalSize != .zero ? naturalSize : CGSize(width: 1920, height: 1080)
         let finalSourceFrameRate = frameRate > 0 ? frameRate : 30.0
+        let isPortrait = abs(preferredTransform.b) == 1.0 && abs(preferredTransform.c) == 1.0
 
         print("🔍 视频处理设置：尺寸=\(finalSourceSize.width)x\(finalSourceSize.height) (\(isPortrait ? "竖屏" : "横屏")), 帧率=\(finalSourceFrameRate) FPS")
 

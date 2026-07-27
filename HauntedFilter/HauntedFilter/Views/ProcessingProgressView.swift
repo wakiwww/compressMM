@@ -76,6 +76,11 @@ struct ProcessingProgressView: View {
         .navigationTitle("")
         .navigationBarHidden(true)
         .navigationBarBackButtonHidden(true)
+        .onChange(of: viewModel.outputURL) { url in
+            if url != nil {
+                dismiss()
+            }
+        }
     }
 
     private var estimatedTimeRemaining: String {

@@ -48,11 +48,11 @@ enum VideoPreset: String, CaseIterable, Identifiable {
 
     var iconName: String {
         switch self {
-        case .basement:  return "house.badge.waveform.fill"
-        case .vhs:       return "waveform.circle.fill"
-        case .signal:    return "antenna.radiowaves.left.and.right"
-        case .fallout:   return "atom"
-        case .dialup:    return "phone.connection.fill"
+        case .basement:  return "house.fill"
+        case .vhs:       return "waveform"
+        case .signal:    return "dot.radiowaves.left.and.right"
+        case .fallout:   return "bolt.fill"
+        case .dialup:    return "phone.down.fill"
         case .broadcast: return "radio.fill"
         }
     }

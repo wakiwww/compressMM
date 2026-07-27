@@ -34,9 +34,6 @@ struct MainView: View {
                     warningBanner
                 }
 
-                // 音频控制
-                audioControlSection
-
                 // 输出设置
                 outputSettingsSection
 
@@ -84,7 +81,7 @@ struct MainView: View {
             Text("DECAY")
                 .font(.system(size: 28, weight: .bold, design: .default))
                 .foregroundColor(.white)
-            Text("视频降质工具")
+            Text("引领画质新潮流")
                 .font(.system(size: 17, weight: .medium, design: .default))
                 .foregroundColor(Color(hex: "#888888"))
         }

@@ -7,6 +7,7 @@ struct PlayerView: View {
     let videoURL: URL
     @ObservedObject var viewModel: ProcessingViewModel
     @Environment(\.dismiss) private var dismiss
+    @State private var player: AVPlayer?
     @State private var showCheckmark = false
     @State private var showCompare = false
     @State private var saveSuccess = false
@@ -36,7 +37,7 @@ struct PlayerView: View {
                     .foregroundColor(.white)
 
                 // 视频预览
-                VideoPlayer(player: AVPlayer(url: videoURL))
+                VideoPlayer(player: player ?? AVPlayer())
                     .frame(height: 240)
                     .cornerRadius(12)
                     .overlay(
@@ -145,6 +146,13 @@ struct PlayerView: View {
                     .frame(height: 24)
             }
         }
+        .onAppear {
+            player = AVPlayer(url: videoURL)
+        }
+        .onDisappear {
+            player?.pause()
+            player = nil
+        }
         .navigationTitle("")
         .navigationBarHidden(true)
         .sheet(isPresented: $showCompare) {
@@ -164,6 +172,8 @@ struct PlayerView: View {
     }
 
     private func saveToPhotoLibrary() {
+        // 强制暂停播放，避免音频在保存后继续播放
+        player?.pause()
         PHPhotoLibrary.shared().performChanges {
             PHAssetChangeRequest.creationRequestForAssetFromVideo(atFileURL: videoURL)
         } completionHandler: { success, error in

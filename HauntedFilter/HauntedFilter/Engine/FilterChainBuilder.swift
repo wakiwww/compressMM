@@ -60,7 +60,7 @@ struct FilterChainBuilder {
         let colorTint: (r: Float, g: Float, b: Float)? = {
             switch preset {
             case .egg:     return nil                    // 鸡蛋：保留原色
-            case .rain:    return nil                    // 雨夜：不碰色彩
+            case .rain:    return (0.78, 0.92, 1.12)      // 雨夜：冷蓝灰调，偏冷色温
             case .netease: return (0.85, 0.8, 0.7)      // 岡易云：复古褪色
             }
         }()

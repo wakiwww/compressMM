@@ -29,7 +29,7 @@ enum VideoPreset: String, CaseIterable, Identifiable {
     var subtitle: String {
         switch self {
         case .egg:     return "5fps · 肉眼可见马赛克 · 保留原色"
-        case .rain:    return "30fps · 极端像素化 · 不碰色彩"
+        case .rain:    return "30fps · 极端像素化 · 冷灰调 · 高频刺耳"
         case .netease: return "音质全损 · 视频全损 · 双管齐下"
         }
     }
@@ -77,12 +77,12 @@ enum VideoPreset: String, CaseIterable, Identifiable {
             )
         case .rain:
             // 30fps 满帧，70px 缩放 → 不可辨认的像素块
-            // 保留原色不碰，音频削低频 + 中高频失真
+            // 冷灰调：饱和度略降 + 色温偏冷；音频：高频拉爆刺耳失真
             return ProcessingParameters(
                 targetWidth: 70, targetFrameRate: 30, videoBitrate: 400_000,
-                saturation: 1.0, contrast: 1.0, brightness: 0,
+                saturation: 0.75, contrast: 1.05, brightness: -0.02,
                 noiseIntensity: 0.45, chromaShiftPixels: 0, scanlineAlpha: 0,
-                audioLowFreq: 600, audioHighFreq: 3000, audioSampleRate: 11025, backgroundNoiseLevel: 0.2
+                audioLowFreq: 1500, audioHighFreq: 5000, audioSampleRate: 8000, backgroundNoiseLevel: 0.45
             )
         case .netease:
             // 音视频全损：视频马赛克 + 音频烂到几乎听不清
@@ -107,12 +107,12 @@ enum VideoPreset: String, CaseIterable, Identifiable {
                 audioLowFreq: 500, audioHighFreq: 2500, audioSampleRate: 8000, backgroundNoiseLevel: 0.25
             )
         case .rain:
-            // 拉到纯色块，不碰色彩，音频只剩失真中高频
+            // 拉到纯色块 + 冷灰 + 高频全爆刺耳
             return ProcessingParameters(
                 targetWidth: 35, targetFrameRate: 30, videoBitrate: 150_000,
-                saturation: 1.0, contrast: 1.0, brightness: 0,
+                saturation: 0.5, contrast: 1.1, brightness: -0.04,
                 noiseIntensity: 0.7, chromaShiftPixels: 0, scanlineAlpha: 0,
-                audioLowFreq: 800, audioHighFreq: 2500, audioSampleRate: 8000, backgroundNoiseLevel: 0.35
+                audioLowFreq: 2000, audioHighFreq: 6000, audioSampleRate: 8000, backgroundNoiseLevel: 0.55
             )
         case .netease:
             // 彻底摧毁 — 视频严重马赛克 + 音频几乎不可辨认

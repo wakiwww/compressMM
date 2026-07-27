@@ -66,10 +66,14 @@ struct MainView: View {
             Text(viewModel.errorMessage ?? "未知错误")
         }
         .onChange(of: viewModel.isProcessing) { isProcessing in
-            if isProcessing {
-                navigation = .processing
-            } else if let url = viewModel.outputURL {
-                navigation = .done(url)
+            DispatchQueue.main.async {
+                if isProcessing {
+                    navigation = .processing
+                } else if let url = viewModel.outputURL {
+                    navigation = .done(url)
+                } else {
+                    navigation = nil  // 取消或失败，返回主页
+                }
             }
         }
         .onChange(of: viewModel.intensity) { newVal in
@@ -495,7 +499,7 @@ struct MainView: View {
                     .fill(viewModel.sourceVideoURL != nil ? Color.white : Color(hex: "#1A1A1A"))
             )
         }
-        .disabled(viewModel.sourceVideoURL == nil)
+        .disabled(viewModel.sourceVideoURL == nil || viewModel.isProcessing)
         .padding(.top, 8)
         .padding(.bottom, 32)
     }

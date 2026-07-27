@@ -137,14 +137,17 @@ class VideoProcessor: ObservableObject {
             throw ProcessingError.writerCreationFailed
         }
 
+        // 编码器 H.264 最低安全阈值，过低会导致编码失败
+        let safeBitrate = max(100_000, parameters.videoBitrate)
+        let safeFrameRate = max(5.0, parameters.targetFrameRate)
         let videoCompressionSettings: [String: Any] = [
             AVVideoCodecKey: AVVideoCodecType.h264,
             AVVideoWidthKey: Int(finalSourceSize.width),
             AVVideoHeightKey: Int(finalSourceSize.height),
             AVVideoCompressionPropertiesKey: [
-                AVVideoAverageBitRateKey: parameters.videoBitrate,
-                AVVideoMaxKeyFrameIntervalKey: Int(parameters.targetFrameRate * 2),
-                AVVideoExpectedSourceFrameRateKey: Int(parameters.targetFrameRate),
+                AVVideoAverageBitRateKey: safeBitrate,
+                AVVideoMaxKeyFrameIntervalKey: Int(safeFrameRate * 2),
+                AVVideoExpectedSourceFrameRateKey: Int(safeFrameRate),
             ] as [String: Any],
         ]
         let writerInput = AVAssetWriterInput(mediaType: .video, outputSettings: videoCompressionSettings)

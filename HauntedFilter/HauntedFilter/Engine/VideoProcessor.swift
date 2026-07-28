@@ -420,8 +420,9 @@ class VideoProcessor: ObservableObject {
             throw writer.error ?? ProcessingError.writerFinishFailed
         }
 
-        // 仅在状态为 .writing 时调用 finishWriting（否则会崩溃）
-        if writer.status == .writing {
+        // 必须在所有输入标记完成后调用 finishWriting，否则输出文件不完整
+        // 低码率音频可能导致 writer 提前完成，所以 .completed 也需要调用
+        if writer.status == .writing || writer.status == .completed {
             writer.finishWriting { }
         }
 

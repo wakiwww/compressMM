@@ -198,6 +198,11 @@ struct ComparePreviewView: View {
 
     @Environment(\.dismiss) private var dismiss
     @State private var sliderPosition: CGFloat = 0.5
+    @State private var timePosition: Double = 0
+    @State private var videoDuration: Double = 10
+    @State private var originalFrame: UIImage?
+    @State private var degradedFrame: UIImage?
+    @State private var isLoadingFrame = false
 
     var body: some View {
         ZStack {
@@ -205,9 +210,7 @@ struct ComparePreviewView: View {
 
             VStack(spacing: 0) {
                 HStack {
-                    Button {
-                        dismiss()
-                    } label: {
+                    Button { dismiss() } label: {
                         Image(systemName: "xmark")
                             .font(.system(size: 16, weight: .medium))
                             .foregroundColor(.white)
@@ -217,30 +220,38 @@ struct ComparePreviewView: View {
                         .font(.system(size: 15, weight: .medium, design: .default))
                         .foregroundColor(.white)
                     Spacer()
-                    Image(systemName: "xmark")
-                        .font(.system(size: 16))
-                        .foregroundColor(.clear)
+                    Image(systemName: "xmark").font(.system(size: 16)).foregroundColor(.clear)
                 }
                 .padding(.horizontal, 20)
                 .padding(.vertical, 16)
 
-                if let originalURL = originalURL {
+                if originalURL != nil {
                     GeometryReader { geo in
                         ZStack {
-                            VideoPlayer(player: AVPlayer(url: originalURL))
-                                .frame(width: geo.size.width, height: geo.size.height)
-                                .clipped()
+                            if let orig = originalFrame {
+                                Image(uiImage: orig)
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fill)
+                                    .frame(width: geo.size.width, height: geo.size.height)
+                                    .clipped()
+                            } else {
+                                Rectangle().fill(Color(hex: "#0A0A0A"))
+                            }
 
-                            VideoPlayer(player: AVPlayer(url: degradedURL))
-                                .frame(width: geo.size.width, height: geo.size.height)
-                                .clipped()
-                                .mask(
-                                    HStack(spacing: 0) {
-                                        Rectangle().fill(Color.black)
-                                            .frame(width: max(0, geo.size.width * sliderPosition))
-                                        Rectangle().fill(Color.clear)
-                                    }
-                                )
+                            if let deg = degradedFrame {
+                                Image(uiImage: deg)
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fill)
+                                    .frame(width: geo.size.width, height: geo.size.height)
+                                    .clipped()
+                                    .mask(
+                                        HStack(spacing: 0) {
+                                            Rectangle().fill(Color.black)
+                                                .frame(width: max(0, geo.size.width * sliderPosition))
+                                            Rectangle().fill(Color.clear)
+                                        }
+                                    )
+                            }
 
                             Rectangle()
                                 .fill(Color.white)
@@ -259,30 +270,104 @@ struct ComparePreviewView: View {
                                 .position(x: geo.size.width * sliderPosition, y: geo.size.height / 2)
                                 .gesture(
                                     DragGesture()
-                                        .onChanged { value in
-                                            sliderPosition = max(0, min(1, value.location.x / geo.size.width))
+                                        .onChanged { v in
+                                            sliderPosition = max(0, min(1, v.location.x / geo.size.width))
                                         }
                                 )
+
+                            if isLoadingFrame {
+                                ProgressView().tint(.white)
+                                    .position(x: geo.size.width / 2, y: geo.size.height / 2)
+                            }
                         }
                     }
                 } else {
-                    VideoPlayer(player: AVPlayer(url: degradedURL))
+                    Rectangle().fill(Color(hex: "#0A0A0A"))
+                        .overlay(Text("无原始视频").foregroundColor(Color(hex: "#555555")))
                 }
 
                 HStack {
-                    Text("原始")
-                        .font(.system(size: 13, weight: .medium, design: .default))
-                        .foregroundColor(.white)
+                    Text("原始").foregroundColor(.white)
                     Spacer()
-                    Text("降质")
-                        .font(.system(size: 13, weight: .medium, design: .default))
-                        .foregroundColor(.white)
+                    Text("降质").foregroundColor(.white)
                 }
+                .font(.system(size: 13, weight: .medium, design: .default))
                 .padding(.horizontal, 20)
+                .padding(.vertical, 8)
+
+                VStack(spacing: 4) {
+                    Slider(value: $timePosition, in: 0...max(videoDuration, 0.1)) { _ in
+                        grabFrames()
+                    }
+                    .tint(.white)
+                    .padding(.horizontal, 20)
+
+                    HStack {
+                        Text(formatTime(timePosition))
+                            .font(.system(size: 11, weight: .regular, design: .monospaced))
+                            .foregroundColor(Color(hex: "#888888"))
+                        Spacer()
+                        Text(formatTime(videoDuration))
+                            .font(.system(size: 11, weight: .regular, design: .monospaced))
+                            .foregroundColor(Color(hex: "#888888"))
+                    }
+                    .padding(.horizontal, 20)
+                }
                 .padding(.vertical, 12)
             }
         }
         .preferredColorScheme(.dark)
+        .onAppear {
+            loadDuration { grabFrames() }
+        }
+    }
+
+    private func loadDuration(completion: @escaping () -> Void) {
+        let asset = AVAsset(url: degradedURL)
+        Task {
+            do {
+                let d = try await asset.load(.duration).seconds
+                await MainActor.run {
+                    videoDuration = d > 0 ? d : 10
+                    timePosition = videoDuration / 2
+                    completion()
+                }
+            } catch {
+                await MainActor.run { videoDuration = 10; timePosition = 5; completion() }
+            }
+        }
+    }
+
+    private func grabFrames() {
+        guard let origURL = originalURL else { return }
+        let degURL = degradedURL
+        let t = CMTime(seconds: timePosition, preferredTimescale: 600)
+        isLoadingFrame = true
+
+        DispatchQueue.global(qos: .userInitiated).async {
+            let origGen = AVAssetImageGenerator(asset: AVAsset(url: origURL))
+            origGen.appliesPreferredTrackTransform = true
+            origGen.requestedTimeToleranceBefore = .zero
+            origGen.requestedTimeToleranceAfter = .zero
+
+            let degGen = AVAssetImageGenerator(asset: AVAsset(url: degURL))
+            degGen.appliesPreferredTrackTransform = true
+            degGen.requestedTimeToleranceBefore = .zero
+            degGen.requestedTimeToleranceAfter = .zero
+
+            var oImg: UIImage?, dImg: UIImage?
+            if let cg = try? origGen.copyCGImage(at: t, actualTime: nil) { oImg = UIImage(cgImage: cg) }
+            if let cg = try? degGen.copyCGImage(at: t, actualTime: nil) { dImg = UIImage(cgImage: cg) }
+
+            DispatchQueue.main.async {
+                originalFrame = oImg; degradedFrame = dImg; isLoadingFrame = false
+            }
+        }
+    }
+
+    private func formatTime(_ s: Double) -> String {
+        guard s.isFinite else { return "00:00" }
+        return String(format: "%02d:%02d", Int(s)/60, Int(s)%60)
     }
 }
 

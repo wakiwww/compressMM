@@ -62,14 +62,20 @@ struct ContentView: View {
             )
             .onChange(of: viewModel.selectedItem) { newItem in
                 guard let newItem else { return }
+                viewModel.isImporting = true
                 Task {
                     do {
-                        guard let url = try await loadVideoURL(from: newItem) else { return }
+                        guard let url = try await loadVideoURL(from: newItem) else {
+                            await MainActor.run { viewModel.isImporting = false }
+                            return
+                        }
                         await MainActor.run {
                             viewModel.didSelectVideo(url: url)
+                            viewModel.isImporting = false
                         }
                     } catch {
                         print("视频加载失败: \(error)")
+                        await MainActor.run { viewModel.isImporting = false }
                     }
                 }
             }

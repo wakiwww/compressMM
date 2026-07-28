@@ -49,6 +49,11 @@ struct MainView: View {
             .padding(.vertical, 16)
         }
         .background(Color.black.ignoresSafeArea())
+        .overlay {
+            if viewModel.isPreparing {
+                preparingOverlay
+            }
+        }
         .navigationTitle("")
         .navigationBarHidden(true)
         .alert("确定继续？", isPresented: $showIntensityAlert) {
@@ -92,7 +97,23 @@ struct MainView: View {
 
     private var importSection: some View {
         Group {
-            if viewModel.sourceVideoURL != nil {
+            if viewModel.isImporting {
+                // 导入中 — 加载指示
+                VStack(spacing: 16) {
+                    ProgressView()
+                        .tint(.white)
+                    Text("正在导入视频...")
+                        .font(.system(size: 15, weight: .medium, design: .default))
+                        .foregroundColor(Color(hex: "#888888"))
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 40)
+                .background(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(style: StrokeStyle(lineWidth: 1.5, dash: [6]))
+                        .foregroundColor(Color(hex: "#444444"))
+                )
+            } else if viewModel.sourceVideoURL != nil {
                 // 已导入 — 显示重新选择按钮
                 Button {
                     viewModel.reset()
@@ -513,9 +534,32 @@ struct MainView: View {
                     .fill(viewModel.sourceVideoURL != nil ? Color.white : Color(hex: "#1A1A1A"))
             )
         }
-        .disabled(viewModel.sourceVideoURL == nil || viewModel.isProcessing || viewModel.encodingWarning != nil)
+        .disabled(viewModel.sourceVideoURL == nil || viewModel.isProcessing || viewModel.isImporting || viewModel.isPreparing || viewModel.encodingWarning != nil)
         .padding(.top, 8)
         .padding(.bottom, 32)
+    }
+
+    // MARK: - 准备覆盖层
+
+    private var preparingOverlay: some View {
+        ZStack {
+            Color.black.opacity(0.85).ignoresSafeArea()
+
+            VStack(spacing: 24) {
+                ProgressView()
+                    .tint(.white)
+                    .scaleEffect(1.5)
+
+                Text("准备中...")
+                    .font(.system(size: 17, weight: .medium, design: .default))
+                    .foregroundColor(.white)
+
+                Text("正在初始化处理管线")
+                    .font(.system(size: 13, weight: .regular, design: .default))
+                    .foregroundColor(Color(hex: "#888888"))
+            }
+        }
+        .transition(.opacity)
     }
 
     // MARK: - 编码安全警告

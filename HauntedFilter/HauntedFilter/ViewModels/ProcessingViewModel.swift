@@ -31,6 +31,10 @@ class ProcessingViewModel: ObservableObject {
     @Published var sourceFileSizeFormatted: String = ""
     @Published var videoDuration: String?
 
+    // MARK: - UI 状态
+    @Published var isImporting = false
+    @Published var isPreparing = false
+
     // MARK: - 编码安全预估
     @Published var encodingWarning: String?
 
@@ -68,11 +72,19 @@ class ProcessingViewModel: ObservableObject {
             return
         }
 
-        isProcessing = true
+        isPreparing = true
         progress = 0
         outputURL = nil
-        navigationStep = .processing
         cancellables.removeAll()
+
+        // 短暂准备动画后平滑切换
+        Task {
+            try? await Task.sleep(nanoseconds: 400_000_000)  // 0.4s
+            guard isPreparing else { return }  // 用户可能已取消
+            isProcessing = true
+            isPreparing = false
+            navigationStep = .processing
+        }
 
         // 同步 processor 的进度到 viewModel
         processor.$progress
@@ -110,6 +122,7 @@ class ProcessingViewModel: ObservableObject {
     func cancelProcessing() {
         processor.cancel()
         isProcessing = false
+        isPreparing = false
         navigationStep = nil
     }
 
@@ -126,6 +139,8 @@ class ProcessingViewModel: ObservableObject {
         sourceFileSize = 0
         sourceFileSizeFormatted = ""
         encodingWarning = nil
+        isImporting = false
+        isPreparing = false
         cancellables.removeAll()
     }
 
@@ -133,6 +148,7 @@ class ProcessingViewModel: ObservableObject {
     func reprocess() {
         outputURL = nil
         isProcessing = false
+        isPreparing = false
         progress = 0
         errorMessage = nil
         navigationStep = nil

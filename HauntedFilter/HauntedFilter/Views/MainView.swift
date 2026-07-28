@@ -23,6 +23,11 @@ struct MainView: View {
                     videoInfoSection
                 }
 
+                // 实时预览（导入后显示，滑块拖动时动态更新）
+                if viewModel.previewDegradedFrame != nil {
+                    previewSection
+                }
+
                 // 模式选择
                 presetSection
 
@@ -198,6 +203,34 @@ struct MainView: View {
             RoundedRectangle(cornerRadius: 12)
                 .fill(Color(hex: "#0A0A0A"))
         )
+    }
+
+    // MARK: - 实时预览
+
+    private var previewSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("实时预览")
+                .font(.system(size: 13, weight: .medium, design: .default))
+                .foregroundColor(Color(hex: "#888888"))
+
+            if let degraded = viewModel.previewDegradedFrame {
+                Image(uiImage: degraded)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .cornerRadius(8)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(Color(hex: "#1C1C1C"), lineWidth: 1)
+                    )
+            } else {
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(Color(hex: "#0A0A0A"))
+                    .frame(height: 160)
+                    .overlay(
+                        ProgressView().tint(.white)
+                    )
+            }
+        }
     }
 
     // MARK: - 模式选择

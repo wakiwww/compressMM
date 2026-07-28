@@ -31,6 +31,12 @@ class ProcessingViewModel: ObservableObject {
     @Published var sourceFileSizeFormatted: String = ""
     @Published var videoDuration: String?
 
+    // MARK: - 实时预览
+    @Published var previewOriginalFrame: UIImage?
+    @Published var previewDegradedFrame: UIImage?
+    private var previewTask: Task<Void, Never>?
+    private let previewContext = CIContext(options: [.useSoftwareRenderer: false, .cacheIntermediates: false])
+
     // MARK: - UI 状态
     @Published var isImporting = false
     @Published var isPreparing = false
@@ -141,6 +147,9 @@ class ProcessingViewModel: ObservableObject {
         encodingWarning = nil
         isImporting = false
         isPreparing = false
+        previewOriginalFrame = nil
+        previewDegradedFrame = nil
+        previewTask?.cancel()
         cancellables.removeAll()
     }
 
@@ -162,6 +171,14 @@ class ProcessingViewModel: ObservableObject {
         sourceFileSizeFormatted = formatFileSize(sourceFileSize)
         Task {
             let asset = AVURLAsset(url: url)
+            // 提取封面帧
+            let generator = AVAssetImageGenerator(asset: asset)
+            generator.appliesPreferredTrackTransform = true
+            generator.maximumSize = CGSize(width: 360, height: 640)
+            if let cg = try? generator.copyCGImage(at: .zero, actualTime: nil) {
+                await MainActor.run { self.previewOriginalFrame = UIImage(cgImage: cg) }
+            }
+            // 时长
             if let duration = try? await asset.load(.duration).seconds,
                duration > 0 {
                 let mins = Int(duration) / 60
@@ -204,6 +221,7 @@ class ProcessingViewModel: ObservableObject {
 
     func recalculateEstimation() {
         updateEncodingWarning()
+        schedulePreviewUpdate()
 
         guard let url = sourceVideoURL else {
             estimatedOutputSize = "未知"
@@ -236,6 +254,53 @@ class ProcessingViewModel: ObservableObject {
                 await MainActor.run {
                     estimatedOutputSize = "无法估算"
                 }
+            }
+        }
+    }
+
+    // MARK: - 实时预览
+
+    /// 防抖延迟 0.15s，滑块拖动时避免每帧都跑 CIFilter
+    private func schedulePreviewUpdate() {
+        guard previewOriginalFrame != nil else { return }
+        previewTask?.cancel()
+        previewTask = Task {
+            try? await Task.sleep(nanoseconds: 150_000_000)  // 0.15s debounce
+            guard !Task.isCancelled else { return }
+            await generatePreview()
+        }
+    }
+
+    private func generatePreview() async {
+        guard let original = previewOriginalFrame else { return }
+        let params = selectedPreset.parameters(for: intensity)
+        let preset = selectedPreset
+
+        // 在后台线程跑 CIFilter
+        let degraded = await Task.detached(priority: .userInitiated) { () -> UIImage? in
+            guard let ciImage = CIImage(image: original) else { return nil }
+            let sourceSize = ciImage.extent.size
+
+            // 复用 FilterChainBuilder 的滤镜逻辑（不含 scanline — 预览不需要）
+            let filtered = FilterChainBuilder.applyFilters(
+                to: ciImage,
+                parameters: params,
+                preset: preset,
+                scanlineTexture: nil,
+                timestamp: Date(),
+                sourceSize: sourceSize
+            )
+            .cropped(to: CGRect(origin: .zero, size: sourceSize))
+
+            // 渲染回 UIImage
+            let context = CIContext(options: [.useSoftwareRenderer: false, .cacheIntermediates: false])
+            guard let cg = context.createCGImage(filtered, from: filtered.extent) else { return nil }
+            return UIImage(cgImage: cg)
+        }.value
+
+        await MainActor.run {
+            if !Task.isCancelled {
+                self.previewDegradedFrame = degraded
             }
         }
     }

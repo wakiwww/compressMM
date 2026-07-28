@@ -217,6 +217,7 @@ struct MainView: View {
                 Image(uiImage: degraded)
                     .resizable()
                     .aspectRatio(contentMode: .fit)
+                    .frame(maxHeight: 200)
                     .cornerRadius(8)
                     .overlay(
                         RoundedRectangle(cornerRadius: 8)

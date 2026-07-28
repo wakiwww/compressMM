@@ -161,6 +161,8 @@ struct PlayerView: View {
                 degradedURL: videoURL,
                 isPresented: $showCompare
             )
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
         }
         .alert(saveSuccess ? "已保存" : "保存失败", isPresented: .init(
             get: { saveMessage != nil },
@@ -212,7 +214,7 @@ struct ComparePreviewView: View {
 
             VStack(spacing: 0) {
                 HStack {
-                    Button { isPresented = false } label: {
+                    Button { dismiss(); isPresented = false } label: {
                         Image(systemName: "xmark")
                             .font(.system(size: 16, weight: .medium))
                             .foregroundColor(.white)

@@ -158,7 +158,8 @@ struct PlayerView: View {
         .sheet(isPresented: $showCompare) {
             ComparePreviewView(
                 originalURL: viewModel.sourceVideoURL,
-                degradedURL: videoURL
+                degradedURL: videoURL,
+                isPresented: $showCompare
             )
         }
         .alert(saveSuccess ? "已保存" : "保存失败", isPresented: .init(
@@ -195,6 +196,7 @@ struct PlayerView: View {
 struct ComparePreviewView: View {
     let originalURL: URL?
     let degradedURL: URL
+    @Binding var isPresented: Bool
 
     @Environment(\.dismiss) private var dismiss
     @State private var sliderPosition: CGFloat = 0.5
@@ -210,7 +212,7 @@ struct ComparePreviewView: View {
 
             VStack(spacing: 0) {
                 HStack {
-                    Button { dismiss() } label: {
+                    Button { isPresented = false } label: {
                         Image(systemName: "xmark")
                             .font(.system(size: 16, weight: .medium))
                             .foregroundColor(.white)

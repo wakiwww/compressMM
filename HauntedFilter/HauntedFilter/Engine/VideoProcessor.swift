@@ -4,30 +4,28 @@ import CoreImage
 import UIKit
 
 /// 核心视频处理器：AVAssetReader → CIFilter 链 → AVAssetWriter
+@MainActor
 class VideoProcessor: ObservableObject {
     @Published var progress: Double = 0
     @Published var isProcessing = false
     @Published var isCancelled = false
     @Published var errorMessage: String?
 
-    private let processingQueue = DispatchQueue(label: "com.hauntedfilter.videoprocessor", qos: .userInitiated)
-    private let ciContext = CIContext()
-    private var scanlineTexture: CIImage?
+    /// 仅由后台串行队列（serialQueue）读写，nonisolated(unsafe) 绕开 @MainActor 隔离检查。
+    nonisolated(unsafe) private var ciContext: CIContext?
+    nonisolated(unsafe) private var scanlineTexture: CIImage?
+
+    /// 线程安全的取消标志。
+    /// @Published var isCancelled 只在主线程更新（供 UI 绑定）；
+    /// 后台队列里一律通过 cancelFlag.value 读写，避免 Data Race。
+    let cancelFlag = AtomicBool(false)
 
     init() {
-        scanlineTexture = ScanlineGenerator.generateScanlineTexture(
-            size: CGSize(width: 1920, height: 1080),
-            spacing: 4,
-            lineThickness: 2
-        )
+        // 延迟初始化，避免在初始化时可能导致的崩溃
+        print("✅ VideoProcessor初始化完成（CIContext延迟初始化）")
     }
 
     /// 处理视频
-    /// - Parameters:
-    ///   - sourceURL: 源视频 URL
-    ///   - preset: 预设
-    ///   - intensity: 强度 (0-100)
-    ///   - completion: 完成回调，返回输出文件 URL
     func processVideo(sourceURL: URL, preset: VideoPreset, intensity: Float) async -> Result<URL, Error> {
         await withCheckedContinuation { continuation in
             processVideo(sourceURL: sourceURL, preset: preset, intensity: intensity) { result in
@@ -49,29 +47,36 @@ class VideoProcessor: ObservableObject {
 
         isProcessing = true
         isCancelled = false
+        cancelFlag.value = false   // 同步重置线程安全标志
         progress = 0
         errorMessage = nil
 
         let parameters = preset.parameters(for: intensity)
-        let asset = AVAsset(url: sourceURL)
+        let asset = AVURLAsset(url: sourceURL)
 
-        processingQueue.async { [weak self] in
-            guard let self = self else { return }
-
-            let outputURL = FileManager.default.temporaryDirectory
-                .appendingPathComponent(UUID().uuidString)
-                .appendingPathExtension("mp4")
+        // 使用 Task.detached 避免继承 @MainActor 上下文导致死锁
+        Task.detached { [weak self] in
+            guard let self = self else {
+                await MainActor.run {
+                    completion(.failure(ProcessingError.unknown))
+                }
+                return
+            }
 
             do {
-                try self.processAsset(asset, parameters: parameters, preset: preset, outputURL: outputURL)
+                let outputURL = FileManager.default.temporaryDirectory
+                    .appendingPathComponent(UUID().uuidString)
+                    .appendingPathExtension("mp4")
 
-                DispatchQueue.main.async {
+                try await self.processAsset(asset, parameters: parameters, preset: preset, outputURL: outputURL)
+
+                await MainActor.run {
                     self.isProcessing = false
                     self.progress = 1.0
                     completion(.success(outputURL))
                 }
             } catch {
-                DispatchQueue.main.async {
+                await MainActor.run {
                     self.isProcessing = false
                     self.errorMessage = error.localizedDescription
                     completion(.failure(error))
@@ -80,25 +85,43 @@ class VideoProcessor: ObservableObject {
         }
     }
 
-    /// 取消处理
-    func cancel() {
-        isCancelled = true
+    /// 取消处理（可从任意线程调用）
+    nonisolated func cancel() {
+        cancelFlag.value = true
+        Task { @MainActor [weak self] in
+            self?.isCancelled = true
+        }
     }
 
-    // MARK: - 核心处理逻辑
+    // MARK: - 核心处理逻辑（以下方法由后台队列调用，标记 nonisolated）
 
-    private func processAsset(
+    nonisolated private func processAsset(
         _ asset: AVAsset,
         parameters: ProcessingParameters,
         preset: VideoPreset,
         outputURL: URL
-    ) throws {
-        guard let videoTrack = asset.tracks(withMediaType: .video).first else {
+    ) async throws {
+        // 加载视频轨道
+        let videoTracks = try await asset.loadTracks(withMediaType: .video)
+        guard let videoTrack = videoTracks.first else {
             throw ProcessingError.noVideoTrack
         }
 
-        let sourceSize = videoTrack.naturalSize
-        let sourceFrameRate = videoTrack.nominalFrameRate
+        // 异步加载视频属性（含方向矫正）
+        let naturalSize = try await videoTrack.load(.naturalSize)
+        let frameRate = try await videoTrack.load(.nominalFrameRate)
+        let preferredTransform = try await videoTrack.load(.preferredTransform)
+
+        // 始终使用自然像素尺寸编码；preferredTransform 负责方向
+        let finalSourceSize = naturalSize != .zero ? naturalSize : CGSize(width: 1920, height: 1080)
+        let finalSourceFrameRate = frameRate > 0 ? frameRate : 30.0
+        let isPortrait = abs(preferredTransform.b) == 1.0 && abs(preferredTransform.c) == 1.0
+
+        print("🔍 视频处理设置：尺寸=\(finalSourceSize.width)x\(finalSourceSize.height) (\(isPortrait ? "竖屏" : "横屏")), 帧率=\(finalSourceFrameRate) FPS")
+
+        // 加载音频轨道
+        let audioTracks = try await asset.loadTracks(withMediaType: .audio)
+        let audioTrack = audioTracks.first
 
         // --- AVAssetReader 设置 ---
         let reader = try AVAssetReader(asset: asset)
@@ -116,22 +139,78 @@ class VideoProcessor: ObservableObject {
             throw ProcessingError.writerCreationFailed
         }
 
+        // 编码器 H.264 最低安全阈值，过低会导致编码失败
+        let safeBitrate = max(100_000, parameters.videoBitrate)
+        let safeFrameRate = max(5.0, parameters.targetFrameRate)
         let videoCompressionSettings: [String: Any] = [
             AVVideoCodecKey: AVVideoCodecType.h264,
-            AVVideoWidthKey: Int(sourceSize.width),
-            AVVideoHeightKey: Int(sourceSize.height),
+            AVVideoWidthKey: Int(finalSourceSize.width),
+            AVVideoHeightKey: Int(finalSourceSize.height),
             AVVideoCompressionPropertiesKey: [
-                AVVideoAverageBitRateKey: parameters.videoBitrate,
-                AVVideoMaxKeyFrameIntervalKey: Int(parameters.targetFrameRate * 2),
-                AVVideoExpectedSourceFrameRateKey: Int(parameters.targetFrameRate),
+                AVVideoAverageBitRateKey: safeBitrate,
+                AVVideoMaxKeyFrameIntervalKey: Int(safeFrameRate * 2),
+                AVVideoExpectedSourceFrameRateKey: Int(safeFrameRate),
             ] as [String: Any],
         ]
         let writerInput = AVAssetWriterInput(mediaType: .video, outputSettings: videoCompressionSettings)
         writerInput.expectsMediaDataInRealTime = false
+        writerInput.transform = preferredTransform  // 保留原始视频方向
         writer.add(writerInput)
 
         // --- 音频设置 ---
-        let audioReaderWriter = try setupAudioReading(for: asset, writer: writer, parameters: parameters)
+        var audioWriterInput: AVAssetWriterInput?
+        var audioReaderOutput: AVAssetReaderTrackOutput?
+
+        // 添加音频轨道处理（真机正常）
+        if let audioTrack = audioTrack {
+            print("🎵 检测到音频轨道，开始音频处理初始化")
+
+            // 音频读取器输出设置
+            let audioReaderSettings: [String: Any] = [
+                AVFormatIDKey: kAudioFormatLinearPCM,
+                AVLinearPCMBitDepthKey: 16,
+                AVLinearPCMIsBigEndianKey: false,
+                AVLinearPCMIsFloatKey: false,
+                AVNumberOfChannelsKey: 2
+            ]
+
+            audioReaderOutput = AVAssetReaderTrackOutput(
+                track: audioTrack,
+                outputSettings: audioReaderSettings
+            )
+            audioReaderOutput?.alwaysCopiesSampleData = false
+
+            if let audioReaderOutput = audioReaderOutput {
+                reader.add(audioReaderOutput)
+                print("✅ 音频读取器已添加")
+            }
+
+            // 音频写入器输入设置 — 采样率 + 码率均降质
+            let safeSampleRate = Self.nearestValidAACSampleRate(for: parameters.audioSampleRate)
+            let audioBitrate = max(24_000, Int(safeSampleRate * 2.5))  // 8kHz→24kbps, 11kHz→27kbps, 极低码率
+            let audioWriterSettings: [String: Any] = [
+                AVFormatIDKey: kAudioFormatMPEG4AAC,
+                AVSampleRateKey: safeSampleRate,
+                AVNumberOfChannelsKey: 1,         // 单声道增加复古感
+                AVEncoderBitRateKey: audioBitrate
+            ]
+
+            audioWriterInput = AVAssetWriterInput(
+                mediaType: .audio,
+                outputSettings: audioWriterSettings
+            )
+            audioWriterInput?.expectsMediaDataInRealTime = false
+
+            if let audioWriterInput = audioWriterInput {
+                writer.add(audioWriterInput)
+                print("✅ 音频写入器已添加")
+            }
+        } else {
+            print("⚠️ 视频中没有检测到音频轨道")
+        }
+
+        // 异步加载时长
+        let duration = try await asset.load(.duration)
 
         // --- 开始读写 ---
         reader.startReading()
@@ -141,28 +220,129 @@ class VideoProcessor: ObservableObject {
         writer.startSession(atSourceTime: .zero)
 
         // 预估总帧数（用于进度）
-        let duration = asset.duration.seconds
-        let estimatedTotalFrames = Int(duration * Double(sourceFrameRate))
+        let estimatedTotalFrames = Int(duration.seconds * Double(finalSourceFrameRate))
         var processedFrames = 0
 
         // --- 逐帧处理 ---
         let serialQueue = DispatchQueue(label: "com.hauntedfilter.writer")
-        let group = DispatchGroup()
-        var frameSkipper = FrameSkipper(sourceFrameRate: Double(sourceFrameRate), targetFrameRate: parameters.targetFrameRate)
+        let audioQueue = DispatchQueue(label: "com.hauntedfilter.audio")
+        let videoGroup = DispatchGroup()
+        let audioGroup = DispatchGroup()
+        var frameSkipper = FrameSkipper(sourceFrameRate: Double(finalSourceFrameRate), targetFrameRate: parameters.targetFrameRate)
 
-        // 预生成扫描线纹理
+        // 预生成扫描线纹理（简化处理）
         let scanlineForSize = ScanlineGenerator.generateScanlineTexture(
-            size: sourceSize,
+            size: finalSourceSize,
             spacing: 4,
             lineThickness: 2
         )
         self.scanlineTexture = scanlineForSize
 
-        writerInput.requestMediaDataWhenReady(on: serialQueue) {
-            while writerInput.isReadyForMoreMediaData, !self.isCancelled {
-                guard let sampleBuffer = readerOutput.copyNextSampleBuffer() else {
+        if scanlineForSize == nil {
+            print("⚠️ 扫描线纹理生成失败，将跳过扫描线效果")
+        } else {
+            print("✅ 扫描线纹理生成成功，尺寸: \(finalSourceSize)")
+        }
+
+        // 启动音频处理（并行处理）
+        // 用 AtomicBool 追踪音频是否仍在进行，避免通过 self 跨队列访问 @Published 属性
+        let audioActive = AtomicBool(audioReaderOutput != nil && audioWriterInput != nil)
+        // 提前捕获 cancelFlag 引用，闭包内无需经过 self，彻底消除 Data Race
+        let cancelRef = cancelFlag
+
+        if let audioReaderOutput = audioReaderOutput, let audioWriterInput = audioWriterInput {
+            audioGroup.enter()
+
+            let weakAudioWriter = audioWriterInput
+            let weakAudioReader = audioReaderOutput
+            // 注意：不再捕获 [weak self]，所有状态通过值类型或 AtomicBool 传递
+            // 用变量追踪是否已完成，防止重复 leave
+            var audioDidFinish = false
+            audioWriterInput.requestMediaDataWhenReady(on: audioQueue) {
+                // 如果写入器已失败，立即完成
+                if writer.status == .failed {
+                    if !audioDidFinish {
+                        audioDidFinish = true
+                        audioActive.value = false
+                        audioGroup.leave()
+                    }
+                    return
+                }
+                while weakAudioWriter.isReadyForMoreMediaData {
+                    if cancelRef.value {
+                        if !audioDidFinish {
+                            audioDidFinish = true
+                            weakAudioWriter.markAsFinished()
+                            audioActive.value = false
+                            audioGroup.leave()
+                        }
+                        return
+                    }
+                    if let sampleBuffer = weakAudioReader.copyNextSampleBuffer() {
+                        weakAudioWriter.append(sampleBuffer)
+                    } else {
+                        print("✅ 音频数据处理完成")
+                        if !audioDidFinish {
+                            audioDidFinish = true
+                            weakAudioWriter.markAsFinished()
+                            audioActive.value = false
+                            audioGroup.leave()
+                        }
+                        return
+                    }
+                }
+                // while 循环退出（isReadyForMoreMediaData = false）但未完成
+                if writer.status == .failed && !audioDidFinish {
+                    audioDidFinish = true
+                    audioActive.value = false
+                    print("⚠️ 音频写入器已失败，信号完成")
+                    audioGroup.leave()
+                }
+            }
+
+            print("🎵 音频处理已启动")
+        }
+
+        // 启动视频处理
+        videoGroup.enter()
+        var videoDidFinish = false
+        writerInput.requestMediaDataWhenReady(on: serialQueue) { [weak self] in
+            guard let self = self else {
+                if !videoDidFinish {
+                    videoDidFinish = true
                     writerInput.markAsFinished()
-                    group.leave()
+                    videoGroup.leave()
+                }
+                return
+            }
+
+            // 如果写入器已失败，立即完成
+            if writer.status == .failed {
+                if !videoDidFinish {
+                    videoDidFinish = true
+                    print("⚠️ 视频写入器已失败，提前完成")
+                    videoGroup.leave()
+                }
+                return
+            }
+
+            while writerInput.isReadyForMoreMediaData {
+                // 通过 cancelRef（AtomicBool）读取，不经过 @Published 属性，线程安全
+                if cancelRef.value {
+                    if !videoDidFinish {
+                        videoDidFinish = true
+                        writerInput.markAsFinished()
+                        videoGroup.leave()
+                    }
+                    return
+                }
+                guard let sampleBuffer = readerOutput.copyNextSampleBuffer() else {
+                    print("✅ 视频数据处理完成")
+                    if !videoDidFinish {
+                        videoDidFinish = true
+                        writerInput.markAsFinished()
+                        videoGroup.leave()
+                    }
                     return
                 }
 
@@ -177,51 +357,82 @@ class VideoProcessor: ObservableObject {
                 if let processedBuffer = self.processSampleBuffer(sampleBuffer,
                                                                    parameters: parameters,
                                                                    preset: preset,
-                                                                   sourceSize: sourceSize,
+                                                                   sourceSize: finalSourceSize,
                                                                    scanlineTexture: scanlineForSize) {
                     writerInput.append(processedBuffer)
                 }
 
                 processedFrames += 1
-                let progress = min(1.0, Double(processedFrames) / Double(max(estimatedTotalFrames, 1)))
-                DispatchQueue.main.async {
-                    self.progress = progress
+                // 每 5 帧更新一次进度，让进度条有可见的加载过程
+                if processedFrames % 5 == 0 {
+                    let progressValue = min(0.99, Double(processedFrames) / Double(max(estimatedTotalFrames, 1)))
+                    DispatchQueue.main.async { [weak self] in
+                        self?.progress = progressValue
+                    }
                 }
             }
 
-            if self.isCancelled {
-                writerInput.markAsFinished()
-                group.leave()
+            // while 循环退出（isReadyForMoreMediaData == false）但未完成
+            // 如果写入器已失败，不会再收到回调，需在此 leave
+            if writer.status == .failed && !videoDidFinish {
+                videoDidFinish = true
+                print("⚠️ 视频写入器状态失败，信号完成")
+                videoGroup.leave()
             }
         }
 
-        group.enter()
-        group.wait()
+        // 等待视频和音频处理都完成
+        let videoComplete: DispatchTimeoutResult = await withCheckedContinuation { continuation in
+            DispatchQueue.global().async {
+                continuation.resume(returning: videoGroup.wait(timeout: .now() + 120.0))
+            }
+        }
+        let audioComplete: Bool
+        if audioActive.value {
+            audioComplete = await withCheckedContinuation { continuation in
+                DispatchQueue.global().async {
+                    continuation.resume(returning: audioGroup.wait(timeout: .now() + 120.0) == .success)
+                }
+            }
+        } else {
+            audioComplete = true
+        }
 
-        // --- 处理音频 ---
-        if let (audioReader, audioWriterInput) = audioReaderWriter {
-            processAudio(reader: audioReader, writerInput: audioWriterInput)
+        if videoComplete != .success {
+            print("⚠️ 视频处理可能未完成")
+        }
+
+        if !audioComplete {
+            print("⚠️ 音频处理可能未完成，强制标记完成")
+            audioWriterInput?.markAsFinished()
         }
 
         // --- 完成 ---
-        if isCancelled {
+        if cancelFlag.value {
             reader.cancelReading()
             writer.cancelWriting()
             try? FileManager.default.removeItem(at: outputURL)
             throw ProcessingError.cancelled
         }
 
-        writer.finishWriting {
-            // 音频处理完成后 finishWriting 会在 audio completion 中调用
+        // 如果写入器已失败（例如音频编码器初始化失败），直接抛出错误
+        if writer.status == .failed {
+            throw writer.error ?? ProcessingError.writerFinishFailed
         }
 
-        // 等待写入完成
-        let writerTimeout = DispatchTime.now() + .seconds(30)
+        // 必须在所有输入标记完成后调用 finishWriting，否则输出文件不完整
+        // 低码率音频可能导致 writer 提前完成，所以 .completed 也需要调用
+        if writer.status == .writing || writer.status == .completed {
+            writer.finishWriting { }
+        }
+
+        // 等待写入完成（使用异步方式）
+        let writerDeadline = Date().addingTimeInterval(30)
         while writer.status == .writing {
-            if DispatchTime.now() > writerTimeout {
+            if Date() > writerDeadline {
                 throw ProcessingError.timeout
             }
-            Thread.sleep(forTimeInterval: 0.1)
+            try await Task.sleep(nanoseconds: 100_000_000)
         }
 
         if writer.status == .failed {
@@ -229,9 +440,9 @@ class VideoProcessor: ObservableObject {
         }
     }
 
-    // MARK: - 帧处理
+    // MARK: - 帧处理（以下方法由后台队列调用，标记 nonisolated）
 
-    private func processSampleBuffer(
+    nonisolated private func processSampleBuffer(
         _ sampleBuffer: CMSampleBuffer,
         parameters: ProcessingParameters,
         preset: VideoPreset,
@@ -254,14 +465,24 @@ class VideoProcessor: ObservableObject {
             sourceSize: sourceSize
         )
 
+        // 确保 extent 限制在 origin (0, 0)
+        let renderImage = ciImage.cropped(to: CGRect(origin: .zero, size: sourceSize))
+
         // 渲染回 CVPixelBuffer
-        let outputBuffer = createPixelBuffer(from: ciImage, size: sourceSize)
+        let outputBuffer = createPixelBuffer(from: renderImage, size: sourceSize)
         guard let outputPixelBuffer = outputBuffer else {
             return nil
         }
 
-        // 使用 CIContext 渲染
-        ciContext.render(ciImage, to: outputPixelBuffer)
+        // 使用 CIContext 渲染（硬件加速配置）
+        let context = ciContext ?? {
+            print("初始化硬件加速 CIContext...")
+            let newContext = CIContext(options: [.useSoftwareRenderer: false, .cacheIntermediates: false])
+            ciContext = newContext
+            return newContext
+        }()
+
+        context.render(renderImage, to: outputPixelBuffer)
 
         // 创建新的 CMSampleBuffer
         var timingInfo = CMSampleTimingInfo()
@@ -290,7 +511,7 @@ class VideoProcessor: ObservableObject {
         return newSampleBuffer
     }
 
-    private func createPixelBuffer(from image: CIImage, size: CGSize) -> CVPixelBuffer? {
+    nonisolated private func createPixelBuffer(from image: CIImage, size: CGSize) -> CVPixelBuffer? {
         let width = Int(size.width)
         let height = Int(size.height)
 
@@ -316,67 +537,20 @@ class VideoProcessor: ObservableObject {
 
     // MARK: - 音频处理
 
-    private func setupAudioReading(
-        for asset: AVAsset,
-        writer: AVAssetWriter,
-        parameters: ProcessingParameters
-    ) throws -> (AVAssetReader, AVAssetWriterInput)? {
-        guard let audioTrack = asset.tracks(withMediaType: .audio).first else {
-            return nil // 无音轨，跳过
-        }
+    // 音频处理已集成到主处理流程中，与视频处理并行执行
 
-        let audioReader = try AVAssetReader(asset: asset)
-        let audioReaderOutput = AVAssetReaderTrackOutput(
-            track: audioTrack,
-            outputSettings: [
-                AVFormatIDKey: kAudioFormatLinearPCM,
-                AVLinearPCMBitDepthKey: 16,
-                AVLinearPCMIsBigEndianKey: false,
-                AVLinearPCMIsFloatKey: false,
-                AVNumberOfChannelsKey: 2,
-            ]
-        )
-        audioReaderOutput.alwaysCopiesSampleData = false
-        audioReader.add(audioReaderOutput)
+    // MARK: - 工具方法
 
-        let audioWriterInput = AVAssetWriterInput(
-            mediaType: .audio,
-            outputSettings: [
-                AVFormatIDKey: kAudioFormatMPEG4AAC,
-                AVSampleRateKey: parameters.audioSampleRate,
-                AVNumberOfChannelsKey: 2,
-                AVEncoderBitRateKey: 64000,
-            ]
-        )
-        audioWriterInput.expectsMediaDataInRealTime = false
-        writer.add(audioWriterInput)
+    /// 合法的 AAC 编码采样率列表（Hz）
+    private static let validAACSampleRates: [Double] = [
+        8000, 11025, 12000, 16000, 22050, 24000,
+        32000, 44100, 48000, 64000, 88200, 96000
+    ]
 
-        return (audioReader, audioWriterInput)
-    }
-
-    private func processAudio(reader: AVAssetReader, writerInput: AVAssetWriterInput) {
-        reader.startReading()
-        let queue = DispatchQueue(label: "com.hauntedfilter.audio")
-
-        writerInput.requestMediaDataWhenReady(on: queue) {
-            while writerInput.isReadyForMoreMediaData {
-                guard let reader = reader.outputs.first as? AVAssetReaderTrackOutput else { break }
-
-                if let sampleBuffer = reader.copyNextSampleBuffer() {
-                    writerInput.append(sampleBuffer)
-                } else {
-                    writerInput.markAsFinished()
-                    break
-                }
-            }
-        }
-
-        // 等待音频读取完成
-        let timeout = DispatchTime.now() + .seconds(30)
-        while reader.status == .reading {
-            if DispatchTime.now() > timeout { break }
-            Thread.sleep(forTimeInterval: 0.1)
-        }
+    /// 将任意采样率四舍五入到最近的合法 AAC 采样率
+    nonisolated static func nearestValidAACSampleRate(for rate: Double) -> Double {
+        let clamped = max(validAACSampleRates.first!, min(validAACSampleRates.last!, rate))
+        return validAACSampleRates.min(by: { abs($0 - clamped) < abs($1 - clamped) }) ?? 44100
     }
 }
 

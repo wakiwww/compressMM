@@ -1,162 +1,146 @@
 import Foundation
 
-/// 视频处理预设枚举
+/// 视频降质模式 — 3 种风格
 enum VideoPreset: String, CaseIterable, Identifiable {
-    case oldPhone   // 老式座机 / BB机摄像头
-    case vhs        // VHS 录像带
-    case cctv       // 老式监控 CCTV
+    case egg       // 鸡蛋 — 极低帧率马赛克，保留原色
+    case rain      // 雨夜骑行男 — 满帧极端马赛克，不碰色彩，音频削低频
+    case netease   // 岡易云vip — 音视频全损，双管齐下
 
     var id: String { rawValue }
 
+    // MARK: - 显示信息
+
     var displayName: String {
         switch self {
-        case .oldPhone: return "老式座机"
-        case .vhs:      return "VHS 录像带"
-        case .cctv:     return "监控 CCTV"
+        case .egg:     return "鸡蛋"
+        case .rain:    return "雨夜骑行男"
+        case .netease: return "岡易云vip"
+        }
+    }
+
+    var englishName: String {
+        switch self {
+        case .egg:     return "EGG"
+        case .rain:    return "RAIN"
+        case .netease: return "NETEASE"
         }
     }
 
     var subtitle: String {
         switch self {
-        case .oldPhone: return "低分辨率 · 偏色 · 电话音"
-        case .vhs:      return "扫描线 · 色彩溢出 · 底噪"
-        case .cctv:     return "黑白 · 卡顿 · 时间戳"
+        case .egg:     return "3fps · 肉眼可见马赛克 · 保留原色"
+        case .rain:    return "10fps · 极端像素化 · 冷灰调 · 高频刺耳"
+        case .netease: return "音质全损 · 视频全损 · 双管齐下"
         }
     }
 
     var iconName: String {
         switch self {
-        case .oldPhone: return "phone.fill"
-        case .vhs:      return "videotape.fill"
-        case .cctv:     return "video.fill.badge.ellipsis"
+        case .egg:     return "circle.grid.3x3.fill"
+        case .rain:    return "cloud.rain.fill"
+        case .netease: return "music.note.list"
         }
     }
 
-    /// 低强度 (s=20) 参数
+    /// 原汁原味压缩量 — 一键出效果
+    var sweetSpotIntensity: Float {
+        switch self {
+        case .egg:     return 50
+        case .rain:    return 55
+        case .netease: return 50
+        }
+    }
+
+    // MARK: - 参数定义
+
+    /// 基线（0%）：极轻微效果
+    var baselineParameters: ProcessingParameters {
+        ProcessingParameters(
+            targetWidth: 640, targetFrameRate: 24, videoBitrate: 2_000_000,
+            saturation: 1.0, contrast: 1.0, brightness: 0,
+            noiseIntensity: 0, chromaShiftPixels: 0, scanlineAlpha: 0,
+            audioLowFreq: 20, audioHighFreq: 20000, audioSampleRate: 44100, backgroundNoiseLevel: 0
+        )
+    }
+
+    /// 中档（50%）：原汁原味效果
     var lowParameters: ProcessingParameters {
         switch self {
-        case .oldPhone:
+        case .egg:
+            // 3fps + 100px 缩放 = 肉眼可见大块马赛克，保留原色
+            // 音频：电话音质
             return ProcessingParameters(
-                targetWidth: 320,
-                targetFrameRate: 20,
-                videoBitrate: 800_000,
-                saturation: 0.9,
-                contrast: 1.05,
-                brightness: 0,
-                noiseIntensity: 0.05,
-                chromaShiftPixels: 0,
-                scanlineAlpha: 0,
-                audioLowFreq: 300,
-                audioHighFreq: 3000,
-                audioSampleRate: 22050,
-                backgroundNoiseLevel: 0
+                targetWidth: 100, targetFrameRate: 3, videoBitrate: 300_000,
+                saturation: 1.0, contrast: 1.0, brightness: 0,
+                noiseIntensity: 0.12, chromaShiftPixels: 0, scanlineAlpha: 0,
+                audioLowFreq: 400, audioHighFreq: 3500, audioSampleRate: 11025, backgroundNoiseLevel: 0.15
             )
-        case .vhs:
+        case .rain:
+            // 30fps 满帧，70px 缩放 → 不可辨认的像素块
+            // 冷灰调：饱和度略降 + 色温偏冷；音频：高频拉爆刺耳失真
             return ProcessingParameters(
-                targetWidth: 360,
-                targetFrameRate: 24,
-                videoBitrate: 1_000_000,
-                saturation: 0.8,
-                contrast: 1.1,
-                brightness: 0,
-                noiseIntensity: 0.02,
-                chromaShiftPixels: 1,
-                scanlineAlpha: 0.1,
-                audioLowFreq: 100,
-                audioHighFreq: 6000,
-                audioSampleRate: 44100,
-                backgroundNoiseLevel: 0.05
+                targetWidth: 70, targetFrameRate: 10, videoBitrate: 400_000,
+                saturation: 0.75, contrast: 1.05, brightness: -0.02,
+                noiseIntensity: 0.45, chromaShiftPixels: 0, scanlineAlpha: 0,
+                audioLowFreq: 1500, audioHighFreq: 5000, audioSampleRate: 8000, backgroundNoiseLevel: 0.45
             )
-        case .cctv:
+        case .netease:
+            // 音视频全损：视频马赛克 + 音频烂到几乎听不清
             return ProcessingParameters(
-                targetWidth: 320,
-                targetFrameRate: 15,
-                videoBitrate: 500_000,
-                saturation: 0.3,
-                contrast: 1.2,
-                brightness: -0.05,
-                noiseIntensity: 0.03,
-                chromaShiftPixels: 0,
-                scanlineAlpha: 0,
-                audioLowFreq: 200,
-                audioHighFreq: 4000,
-                audioSampleRate: 16000,
-                backgroundNoiseLevel: 0
+                targetWidth: 110, targetFrameRate: 5, videoBitrate: 250_000,
+                saturation: 0.35, contrast: 1.5, brightness: -0.06,
+                noiseIntensity: 0.5, chromaShiftPixels: 0, scanlineAlpha: 0,
+                audioLowFreq: 600, audioHighFreq: 2500, audioSampleRate: 8000, backgroundNoiseLevel: 0.45
             )
         }
     }
 
-    /// 高强度 (s=90) 参数
+    /// 高档（100%）：拉满效果，编码安全
     var highParameters: ProcessingParameters {
         switch self {
-        case .oldPhone:
+        case .egg:
+            // 极致大块马赛克，原色不动，音频极度压缩
             return ProcessingParameters(
-                targetWidth: 120,
-                targetFrameRate: 6,
-                videoBitrate: 80_000,
-                saturation: 0.2,
-                contrast: 1.2,
-                brightness: -0.05,
-                noiseIntensity: 0.35,
-                chromaShiftPixels: 0,
-                scanlineAlpha: 0,
-                audioLowFreq: 300,
-                audioHighFreq: 3000,
-                audioSampleRate: 6000,
-                backgroundNoiseLevel: 0
+                targetWidth: 40, targetFrameRate: 3, videoBitrate: 120_000,
+                saturation: 1.0, contrast: 1.05, brightness: 0,
+                noiseIntensity: 0.25, chromaShiftPixels: 0, scanlineAlpha: 0,
+                audioLowFreq: 500, audioHighFreq: 2500, audioSampleRate: 8000, backgroundNoiseLevel: 0.25
             )
-        case .vhs:
+        case .rain:
+            // 拉到纯色块 + 冷灰 + 高频全爆刺耳
             return ProcessingParameters(
-                targetWidth: 160,
-                targetFrameRate: 10,
-                videoBitrate: 150_000,
-                saturation: 0.3,
-                contrast: 1.3,
-                brightness: -0.03,
-                noiseIntensity: 0.15,
-                chromaShiftPixels: 5,
-                scanlineAlpha: 0.3,
-                audioLowFreq: 100,
-                audioHighFreq: 6000,
-                audioSampleRate: 22050,
-                backgroundNoiseLevel: 0.2
+                targetWidth: 35, targetFrameRate: 10, videoBitrate: 150_000,
+                saturation: 0.5, contrast: 1.1, brightness: -0.04,
+                noiseIntensity: 0.7, chromaShiftPixels: 0, scanlineAlpha: 0,
+                audioLowFreq: 2000, audioHighFreq: 6000, audioSampleRate: 8000, backgroundNoiseLevel: 0.55
             )
-        case .cctv:
+        case .netease:
+            // 彻底摧毁 — 视频严重马赛克 + 音频几乎不可辨认
             return ProcessingParameters(
-                targetWidth: 120,
-                targetFrameRate: 5,
-                videoBitrate: 60_000,
-                saturation: 0.05,
-                contrast: 1.4,
-                brightness: -0.1,
-                noiseIntensity: 0.2,
-                chromaShiftPixels: 0,
-                scanlineAlpha: 0,
-                audioLowFreq: 200,
-                audioHighFreq: 4000,
-                audioSampleRate: 8000,
-                backgroundNoiseLevel: 0
+                targetWidth: 55, targetFrameRate: 5, videoBitrate: 120_000,
+                saturation: 0.1, contrast: 2.0, brightness: -0.1,
+                noiseIntensity: 0.7, chromaShiftPixels: 0, scanlineAlpha: 0,
+                audioLowFreq: 800, audioHighFreq: 2000, audioSampleRate: 8000, backgroundNoiseLevel: 0.7
             )
         }
     }
 
-    /// 根据强度获取插值后的参数
+    // MARK: - 插值
+
     func parameters(for intensity: Float) -> ProcessingParameters {
-        let clamped = max(20, min(90, intensity))
-        let t = (clamped - 20) / 70  // 0.0 ~ 1.0
-        return lowParameters.interpolated(towards: highParameters, t: t)
+        let clamped = max(0, min(100, intensity))
+        if clamped <= 50 {
+            let t = clamped / 50.0
+            return baselineParameters.interpolated(towards: lowParameters, t: t)
+        } else {
+            let t = (clamped - 50) / 50.0
+            return lowParameters.interpolated(towards: highParameters, t: t)
+        }
     }
 
-    /// 预设特有的启用标志
-    func shouldEnableChromaShift() -> Bool {
-        self == .vhs
-    }
+    // MARK: - 特效开关（全部关闭，纯靠分辨率缩放 + 噪声 + 对比度出效果）
 
-    func shouldEnableScanlines() -> Bool {
-        self == .vhs
-    }
-
-    func shouldEnableTimestamp() -> Bool {
-        self == .cctv
-    }
+    func shouldEnableChromaShift() -> Bool { false }
+    func shouldEnableScanlines() -> Bool { false }
+    func shouldEnableTimestamp() -> Bool { false }
 }

@@ -24,6 +24,7 @@
 		AE2D1491405D8CC4EBAB8D7F /* VideoPreset.swift in Sources */ = {isa = PBXBuildFile; fileRef = D110DB9F42DFAE0C240545D2 /* VideoPreset.swift */; };
 		B8A87B0B69809CE31EC9C0A4 /* HauntedFilterApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5CAB71B27C107ED980C7F02 /* HauntedFilterApp.swift */; };
 		C1135836BC8128B1C1918879 /* PresetCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BECCC6EAB7BFC824D22E7654 /* PresetCardView.swift */; };
+		C55808BDE3B14D9FBF5CE35D /* ThreadSafety.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4B1F02E909F44708C28AA3B /* ThreadSafety.swift */; };
 		EA61A74E14846782BFDA589A /* FilterChainBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7813B662124D30477F1E87F /* FilterChainBuilder.swift */; };
 /* End PBXBuildFile section */
 
@@ -44,6 +45,7 @@
 		BF9D0D7719FA6F21E34BEFE7 /* ProcessingProgressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessingProgressView.swift; sourceTree = "<group>"; };
 		D110DB9F42DFAE0C240545D2 /* VideoPreset.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoPreset.swift; sourceTree = "<group>"; };
 		D1E9CE1F9D4A873AA5768B88 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		D4B1F02E909F44708C28AA3B /* ThreadSafety.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThreadSafety.swift; sourceTree = "<group>"; };
 		D5CAB71B27C107ED980C7F02 /* HauntedFilterApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HauntedFilterApp.swift; sourceTree = "<group>"; };
 		E45834EF3CFCE19D102602D8 /* AudioProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioProcessor.swift; sourceTree = "<group>"; };
 		E7813B662124D30477F1E87F /* FilterChainBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilterChainBuilder.swift; sourceTree = "<group>"; };
@@ -129,6 +131,7 @@
 				38F0FA02DB1E6EDE814B4EA0 /* Models */,
 				34E5485D761AA0770A6EEBA6 /* ViewModels */,
 				6FEA1BA8B98AA5D8359ACC83 /* Views */,
+				D4B1F02E909F44708C28AA3B /* ThreadSafety.swift */,
 			);
 			path = HauntedFilter;
 			sourceTree = "<group>";
@@ -168,7 +171,7 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
-				LastUpgradeCheck = 1600;
+				LastUpgradeCheck = 2650;
 			};
 			buildConfigurationList = C2D1D28249DAB42A326D11E6 /* Build configuration list for PBXProject "HauntedFilter" */;
 			developmentRegion = en;
@@ -212,6 +215,7 @@
 				95666B142837F27E8B5B3A96 /* ScanlineGenerator.swift in Sources */,
 				AE2D1491405D8CC4EBAB8D7F /* VideoPreset.swift in Sources */,
 				00F407B9AFC526F1316A48D2 /* VideoProcessor.swift in Sources */,
+				C55808BDE3B14D9FBF5CE35D /* ThreadSafety.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -223,14 +227,14 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				DEVELOPMENT_TEAM = V57S9M2FMS;
 				INFOPLIST_FILE = HauntedFilter/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				CODE_SIGN_STYLE = Automatic;
+					IPHONEOS_DEPLOYMENT_TARGET = 18.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.hauntedfilter.app;
+				PRODUCT_BUNDLE_IDENTIFIER = com.hauntedfilter.com;
 				PRODUCT_NAME = "阴间录像";
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.9;
@@ -243,14 +247,14 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				DEVELOPMENT_TEAM = V57S9M2FMS;
 				INFOPLIST_FILE = HauntedFilter/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				CODE_SIGN_STYLE = Automatic;
+					IPHONEOS_DEPLOYMENT_TARGET = 18.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.hauntedfilter.app;
+				PRODUCT_BUNDLE_IDENTIFIER = com.hauntedfilter.com;
 				PRODUCT_NAME = "阴间录像";
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.9;
@@ -294,9 +298,10 @@
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = V57S9M2FMS;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
@@ -311,6 +316,7 @@
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.0;
@@ -353,9 +359,10 @@
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = dwarf;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = V57S9M2FMS;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -377,6 +384,7 @@
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;

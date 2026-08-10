@@ -1,52 +1,55 @@
 import SwiftUI
 
-/// 单个预设卡片
+/// 单个预设卡片 — 设计规格：140×180pt，黑白科技感
 struct PresetCardView: View {
     let preset: VideoPreset
     let isSelected: Bool
 
     var body: some View {
-        VStack(spacing: 12) {
-            // 图标
+        VStack(spacing: 14) {
+            // 顶部：英文名 SF Mono
+            Text(preset.englishName)
+                .font(.system(size: 11, weight: .regular, design: .monospaced))
+                .foregroundColor(Color(hex: "#888888"))
+                .padding(.top, 16)
+
+            // 中间：图标
             Image(systemName: preset.iconName)
-                .font(.system(size: 36))
-                .foregroundColor(isSelected ? .red : .gray)
+                .font(.system(size: 32, weight: .thin))
+                .foregroundColor(isSelected ? .white : Color(hex: "#555555"))
                 .frame(height: 50)
 
-            // 名称
+            // 底部：中文名
             Text(preset.displayName)
-                .font(.headline)
-                .foregroundColor(.white)
-
-            // 描述
-            Text(preset.subtitle)
-                .font(.caption2)
-                .foregroundColor(.gray)
-                .multilineTextAlignment(.center)
-                .lineLimit(2)
+                .font(.system(size: 15, weight: .medium, design: .default))
+                .foregroundColor(isSelected ? .white : Color(hex: "#888888"))
+                .padding(.bottom, 16)
         }
-        .frame(width: 130, height: 150)
-        .padding(.vertical, 8)
-        .padding(.horizontal, 4)
+        .frame(width: 140, height: 180)
         .background(
             RoundedRectangle(cornerRadius: 16)
-                .fill(isSelected ? Color.red.opacity(0.2) : Color.gray.opacity(0.1))
+                .fill(Color(hex: "#0A0A0A"))
                 .overlay(
                     RoundedRectangle(cornerRadius: 16)
-                        .stroke(isSelected ? Color.red : Color.clear, lineWidth: 2)
+                        .stroke(
+                            isSelected ? Color.white : Color.clear,
+                            lineWidth: 1.5
+                        )
                 )
         )
-        .animation(.easeInOut(duration: 0.2), value: isSelected)
+        .opacity(isSelected ? 1.0 : 0.5)
+        .scaleEffect(isSelected ? 1.03 : 1.0)
+        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
     }
 }
 
 #Preview {
-    HStack {
-        PresetCardView(preset: .oldPhone, isSelected: true)
-        PresetCardView(preset: .vhs, isSelected: false)
-        PresetCardView(preset: .cctv, isSelected: false)
+    HStack(spacing: 12) {
+        PresetCardView(preset: .egg, isSelected: true)
+        PresetCardView(preset: .rain, isSelected: false)
+        PresetCardView(preset: .netease, isSelected: false)
     }
     .padding()
     .background(Color.black)
-    .previewLayout(.sizeThatFits)
+    .preferredColorScheme(.dark)
 }

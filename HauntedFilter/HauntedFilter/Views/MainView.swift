@@ -8,6 +8,7 @@ struct MainView: View {
 
     @State private var showIntensityWarning = false
     @State private var showIntensityAlert = false
+    @State private var showAboutView = false
 
     var body: some View {
         ScrollView {
@@ -82,18 +83,31 @@ struct MainView: View {
         .onAppear {
             updateWarning(for: viewModel.intensity)
         }
+        .sheet(isPresented: $showAboutView) {
+            AboutView()
+        }
     }
 
     // MARK: - 标题区
 
     private var titleSection: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("Rêverie")
-                .font(.system(size: 28, weight: .bold, design: .default))
-                .foregroundColor(.white)
-            Text("引领画质新潮流")
-                .font(.system(size: 17, weight: .medium, design: .default))
-                .foregroundColor(Color(hex: "#888888"))
+        HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Rêverie")
+                    .font(.system(size: 28, weight: .bold, design: .default))
+                    .foregroundColor(.white)
+                Text("引领画质新潮流")
+                    .font(.system(size: 17, weight: .medium, design: .default))
+                    .foregroundColor(Color(hex: "#888888"))
+            }
+            Spacer()
+            Button(action: {
+                showAboutView = true
+            }) {
+                Image(systemName: "info.circle")
+                    .font(.system(size: 22))
+                    .foregroundColor(Color(hex: "#888888"))
+            }
         }
         .padding(.top, 8)
     }

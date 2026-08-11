@@ -14,7 +14,7 @@ export default function Terms() {
       <main style={styles.main}>
         <section style={styles.section}>
           <p style={styles.intro}>
-            欢迎使用 Rêverie。请仔细阅读以下使用条款。使用本应用即表示您同意遵守这些条款。
+            欢迎使用 werck it!- video degrader（压烂它！）。请仔细阅读以下使用条款。使用本应用即表示您同意遵守这些条款。
           </p>
         </section>
 
@@ -69,14 +69,14 @@ export default function Terms() {
         <section style={styles.section}>
           <h2 style={styles.sectionTitle}>7. 联系我们</h2>
           <div style={styles.contact}>
-            <p><strong>法律相关：</strong> legal@reverie-app.com</p>
-            <p><strong>技术支持：</strong> <a href="/support" style={styles.link}>reverie-app.com/support</a></p>
+            <p><strong>法律相关：</strong> legal@werckit-app.com</p>
+            <p><strong>技术支持：</strong> <a href="/support" style={styles.link}>werckit-app.com/support</a></p>
           </div>
         </section>
 
         <section style={styles.note}>
           <p>
-            <strong>重要提示：</strong>在使用 Rêverie 应用前，请确保您已阅读、理解并同意这些使用条款。
+            <strong>重要提示：</strong>在使用 werck it!- video degrader（压烂它！）应用前，请确保您已阅读、理解并同意这些使用条款。
             如果您不同意这些条款，请不要使用本应用。
           </p>
         </section>
@@ -88,7 +88,7 @@ export default function Terms() {
           <a href="/support" style={styles.footerLink}>技术支持</a>
           <a href="/privacy" style={styles.footerLink}>隐私政策</a>
         </div>
-        <p>© 2024 Rêverie. All rights reserved.</p>
+        <p>© 2024 werck it!- video degrader（压烂它！）. All rights reserved.</p>
       </footer>
     </div>
   );

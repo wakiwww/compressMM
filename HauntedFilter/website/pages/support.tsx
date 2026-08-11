@@ -16,7 +16,7 @@ export default function Support() {
 
           <div style={styles.faq}>
             <h3 style={styles.faqQuestion}>如何联系技术支持？</h3>
-            <p style={styles.faqAnswer}>请发送邮件至 support@reverie-app.com，我们会在24小时内回复。</p>
+            <p style={styles.faqAnswer}>请发送邮件至 support@werckit-app.com，我们会在24小时内回复。</p>
           </div>
 
           <div style={styles.faq}>
@@ -33,7 +33,7 @@ export default function Support() {
         <section style={styles.section}>
           <h2 style={styles.sectionTitle}>联系我们</h2>
           <div style={styles.contact}>
-            <p><strong>电子邮件：</strong> support@reverie-app.com</p>
+            <p><strong>电子邮件：</strong> support@werckit-app.com</p>
             <p><strong>响应时间：</strong> 24-48小时</p>
             <p><strong>服务时间：</strong> 周一至周五 9:00-18:00</p>
           </div>
@@ -41,7 +41,7 @@ export default function Support() {
       </main>
 
       <footer style={styles.footer}>
-        <p>© 2024 Rêverie. 技术支持中心</p>
+        <p>© 2024 werck it!- video degrader（压烂它！）. 技术支持中心</p>
       </footer>
     </div>
   );

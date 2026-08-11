@@ -1,4 +1,4 @@
-# Vercel 部署指南 - Rêverie App Store 网站
+# Vercel 部署指南 - werck it!- video degrader（压烂它！）App Store 网站
 
 ## ✅ 已完成的工作
 
@@ -55,7 +55,7 @@ Vercel 会自动检测到这是 Next.js 项目：
 ### 步骤 5: 配置自定义域名 (可选但推荐)
 1. 进入项目仪表板
 2. 点击 "Settings" → "Domains"
-3. 添加你的域名 (如 `reverie-app.com`)
+3. 添加你的域名 (如 `werckit-app.com`)
 4. 按照Vercel的指示配置DNS记录
 
 ## 🔧 技术验证

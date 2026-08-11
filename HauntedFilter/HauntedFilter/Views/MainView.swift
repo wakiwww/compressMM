@@ -88,11 +88,11 @@ struct MainView: View {
 
     private var titleSection: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("Rêverie")
+            Text("werck it!")
                 .font(.system(size: 28, weight: .bold, design: .default))
                 .foregroundColor(.white)
-            Text("引领画质新潮流")
-                .font(.system(size: 17, weight: .medium, design: .default))
+            Text("video degrader（压烂它！）")
+                .font(.system(size: 16, weight: .medium, design: .default))
                 .foregroundColor(Color(hex: "#888888"))
         }
         .padding(.top, 8)

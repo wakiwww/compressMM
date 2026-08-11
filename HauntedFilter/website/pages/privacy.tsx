@@ -14,14 +14,14 @@ export default function Privacy() {
       <main style={styles.main}>
         <section style={styles.section}>
           <p style={styles.intro}>
-            本隐私政策说明了 Rêverie 如何收集、使用和保护您的信息。我们承诺保护您的隐私。
+            本隐私政策说明了 werck it!- video degrader（压烂它！）如何收集、使用和保护您的信息。我们承诺保护您的隐私。
           </p>
         </section>
 
         <section style={styles.section}>
           <h2 style={styles.sectionTitle}>1. 信息收集</h2>
           <p style={styles.text}>
-            Rêverie 尊重您的隐私。所有视频处理都在您的设备本地完成，我们不会将您的视频上传到任何服务器。
+            werck it!- video degrader（压烂它！）尊重您的隐私。所有视频处理都在您的设备本地完成，我们不会将您的视频上传到任何服务器。
           </p>
         </section>
 
@@ -45,14 +45,14 @@ export default function Privacy() {
             如果您对本隐私政策有任何疑问，请通过以下方式联系我们：
           </p>
           <div style={styles.contact}>
-            <p><strong>邮箱：</strong> privacy@reverie-app.com</p>
-            <p><strong>技术支持：</strong> <a href="/support" style={styles.link}>reverie-app.com/support</a></p>
+            <p><strong>邮箱：</strong> privacy@werckit-app.com</p>
+            <p><strong>技术支持：</strong> <a href="/support" style={styles.link}>werckit-app.com/support</a></p>
           </div>
         </section>
 
         <section style={styles.note}>
           <p>
-            <strong>重要提示：</strong>使用 Rêverie 应用即表示您同意本隐私政策。
+            <strong>重要提示：</strong>使用 werck it!- video degrader（压烂它！）应用即表示您同意本隐私政策。
             我们可能会不时更新本政策，更新后的政策将在本页面发布。
           </p>
         </section>
@@ -64,7 +64,7 @@ export default function Privacy() {
           <a href="/support" style={styles.footerLink}>技术支持</a>
           <a href="/terms" style={styles.footerLink}>使用条款</a>
         </div>
-        <p>© 2024 Rêverie. All rights reserved.</p>
+        <p>© 2024 werck it!- video degrader（压烂它！）. All rights reserved.</p>
       </footer>
     </div>
   );

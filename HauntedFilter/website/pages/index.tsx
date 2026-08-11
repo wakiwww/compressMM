@@ -4,15 +4,15 @@ export default function Home() {
   return (
     <div style={styles.container}>
       <header style={styles.header}>
-        <h1 style={styles.title}>Rêverie</h1>
-        <p style={styles.subtitle}>引领画质新潮流</p>
+        <h1 style={styles.title}>werck it!- video degrader（压烂它！）</h1>
+        <p style={styles.subtitle}>将视频压烂成阴间风格</p>
       </header>
 
       <main style={styles.main}>
         <section style={styles.section}>
-          <h2 style={styles.sectionTitle}>欢迎访问 Rêverie 官方网站</h2>
+          <h2 style={styles.sectionTitle}>欢迎访问 werck it!- video degrader（压烂它！）官方网站</h2>
           <p style={styles.text}>
-            Rêverie 是一款创新的视频处理工具，通过先进的算法为您的视频添加独特的艺术效果。
+            werck it!- video degrader（压烂它！）是一款创新的视频处理工具，通过先进的算法将您的视频压烂成阴间风格。
           </p>
         </section>
 
@@ -28,16 +28,16 @@ export default function Home() {
         <section style={styles.section}>
           <h2 style={styles.sectionTitle}>App Store 提交信息</h2>
           <div style={styles.info}>
-            <p><strong>应用名称：</strong>Rêverie</p>
-            <p><strong>技术支持网址：</strong>https://reverie-app.com/support</p>
-            <p><strong>营销网址：</strong>https://reverie-app.com</p>
-            <p><strong>隐私政策：</strong>https://reverie-app.com/privacy</p>
+            <p><strong>应用名称：</strong>werck it!- video degrader（压烂它！）</p>
+            <p><strong>技术支持网址：</strong>https://werckit-app.com/support</p>
+            <p><strong>营销网址：</strong>https://werckit-app.com</p>
+            <p><strong>隐私政策：</strong>https://werckit-app.com/privacy</p>
           </div>
         </section>
       </main>
 
       <footer style={styles.footer}>
-        <p>© 2024 Rêverie. All rights reserved.</p>
+        <p>© 2024 werck it!- video degrader（压烂它！）. All rights reserved.</p>
         <p style={styles.footerNote}>此为 App Store 提交所需的官方网站</p>
       </footer>
     </div>

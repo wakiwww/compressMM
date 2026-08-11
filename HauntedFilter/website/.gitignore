@@ -1,0 +1,201 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
+.yarn/install-state.gz
+
+# testing
+/coverage
+/.nyc_output
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# local env files
+.env*.local
+.env
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# System files
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+
+# Build cache
+.next/cache/
+.cache/
+*.mode2v3
+*.perspectivev3
+
+# 构建产物
+build/
+DerivedData/
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# CocoaPods
+Pods/
+
+# Swift包管理器
+.swiftpm/
+.build/
+
+# 应用文件
+*.app
+*.app.dSYM
+
+# ============================================
+# Swift源文件 - 这些应该被保留在仓库中
+# 但我们不想在网站部署的分支中包含它们
+# ============================================
+
+# iOS应用源代码目录（整个目录）
+HauntedFilter/
+
+# ============================================
+# 其他配置文件
+# ============================================
+
+# App Store配置
+AppStore_Config/
+
+# iOS相关文档
+APPSTORE_PREPARATION.md
+QUICK_FIXES.md
+video-degradation-app-design.md
+Rebuild
+project.yml
+
+# ============================================
+# 系统文件
+# ============================================
+
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# ============================================
+# Node.js / Next.js 构建文件
+# ============================================
+
+# 依赖
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Next.js
+.next/
+out/
+
+# 环境变量
+.env*.local
+.env
+
+# 生产构建产物
+.next/static/chunks/*.js.map
+.next/static/chunks/*.js
+.next/static/chunks/main-*.js
+.next/static/chunks/webpack-*.js
+.next/static/chunks/framework-*.js
+.next/static/chunks/pages/*.js
+.next/static/chunks/amp-*.js
+
+# 开发缓存
+.next/cache/
+
+# 日志
+*.log
+
+# 编辑器文件
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 操作系统文件
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# ============================================
+# 临时文件
+# ============================================
+
+# 临时文件
+*.tmp
+*.temp
+*.bak
+*.backup
+
+# ============================================
+# 测试文件
+# ============================================
+
+# 测试覆盖率
+coverage/
+.nyc_output
+
+# ============================================
+# 部署文件
+# ============================================
+
+# Vercel部署配置
+.vercel/
+
+# ============================================
+# 特殊说明
+# ============================================
+
+# 注意：这个.gitignore文件是专门为Vercel部署分支准备的
+# 在main分支中，iOS文件应该被保留，但在这个分支中应该被忽略
+# 这样Vercel只部署网站文件，不包含iOS项目文件

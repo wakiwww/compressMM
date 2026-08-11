@@ -1,6 +1,0 @@
-RegionCode,RegionName,LanguageCode,DisplayLanguage,AppName,Phase,PriceTier,Price,Status
-US,United States,en,English,Wreck It!,Phase 1,3,$2.99,Active
-CN,China,zh-Hans,Simplified Chinese,Wreck It!,Phase 1,1,¥6,Active
-GB,United Kingdom,en,English,Wreck It!,Phase 1,3,£2.99,Active
-JP,Japan,ja,Japanese,Wreck It!,Phase 1,3,¥400,Active
-TW,Taiwan,zh-Hant,Traditional Chinese,Wreck It!,Phase 1,2,TWD 90,Active

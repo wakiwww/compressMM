@@ -37,7 +37,7 @@
 		2CC63F66B3B3CEEAB1DB375B /* ProcessingProgress.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessingProgress.swift; sourceTree = "<group>"; };
 		38B1F317BB1417D18A6CE30A /* VideoProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoProcessor.swift; sourceTree = "<group>"; };
 		39029E896DDDC20B5E6D5127 /* CIImage+Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CIImage+Extensions.swift"; sourceTree = "<group>"; };
-		47200350BF39912B453234B7 /* werck it\!- video degrader（压烂它！）.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "werck it\!- video degrader（压烂它！）.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		47200350BF39912B453234B7 /* 阴间录像.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "阴间录像.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		54957251B0FFF1ED97401D53 /* FrameSkipper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrameSkipper.swift; sourceTree = "<group>"; };
 		90084F44719CEF1AC742372C /* ProcessingParameters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessingParameters.swift; sourceTree = "<group>"; };
 		ABDF219A7554C63A47734D05 /* CVPixelBuffer+Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CVPixelBuffer+Extensions.swift"; sourceTree = "<group>"; };
@@ -139,7 +139,7 @@
 		F5A56CD33F9628FF1DEAEDB4 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				47200350BF39912B453234B7 /* werck it\!- video degrader（压烂它！）.app */,
+				47200350BF39912B453234B7 /* 阴间录像.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -161,7 +161,7 @@
 			packageProductDependencies = (
 			);
 			productName = HauntedFilter;
-			productReference = 47200350BF39912B453234B7 /* werck it\!- video degrader（压烂它！）.app */;
+			productReference = 47200350BF39912B453234B7 /* 阴间录像.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -237,8 +237,8 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.werckit.videodegrader;
-				PRODUCT_NAME = "werck it\!- video degrader（压烂它！）";
+				PRODUCT_BUNDLE_IDENTIFIER = com.hauntedfilter.com;
+				PRODUCT_NAME = "阴间录像";
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.9;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -260,8 +260,8 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.werckit.videodegrader;
-				PRODUCT_NAME = "werck it\!- video degrader（压烂它！）";
+				PRODUCT_BUNDLE_IDENTIFIER = com.hauntedfilter.com;
+				PRODUCT_NAME = "阴间录像";
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.9;
 				TARGETED_DEVICE_FAMILY = "1,2";

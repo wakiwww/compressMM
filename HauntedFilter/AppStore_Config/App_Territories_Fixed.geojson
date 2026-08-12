@@ -1,0 +1,25 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "werck it!- video degrader（压烂它！） Supported Territories"
+      },
+      "geometry": {
+        "type": "MultiPolygon",
+        "coordinates": [
+          [
+            [
+              [-180.0, 90.0],
+              [-180.0, -90.0],
+              [180.0, -90.0],
+              [180.0, 90.0],
+              [-180.0, 90.0]
+            ]
+          ]
+        ]
+      }
+    }
+  ]
+}

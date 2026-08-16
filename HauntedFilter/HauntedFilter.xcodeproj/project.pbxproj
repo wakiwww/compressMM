@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0C178D3503D06C4A80F0292B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 2D958A0A07054B2EAF99FD93 /* Assets.xcassets */; };
 		00F407B9AFC526F1316A48D2 /* VideoProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38B1F317BB1417D18A6CE30A /* VideoProcessor.swift */; };
 		2F630C32E74A36F847381D0A /* ProcessingProgress.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CC63F66B3B3CEEAB1DB375B /* ProcessingProgress.swift */; };
 		2F85CC1C84169AA40EBDAEA2 /* ProcessingParameters.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90084F44719CEF1AC742372C /* ProcessingParameters.swift */; };
@@ -35,9 +36,10 @@
 		2197F3D73D329D9BDC3D5A42 /* AVAsset+Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AVAsset+Extensions.swift"; sourceTree = "<group>"; };
 		27B2A70FD5BE3A04833179EB /* ScanlineGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanlineGenerator.swift; sourceTree = "<group>"; };
 		2CC63F66B3B3CEEAB1DB375B /* ProcessingProgress.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessingProgress.swift; sourceTree = "<group>"; };
+		2D958A0A07054B2EAF99FD93 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		38B1F317BB1417D18A6CE30A /* VideoProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoProcessor.swift; sourceTree = "<group>"; };
 		39029E896DDDC20B5E6D5127 /* CIImage+Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CIImage+Extensions.swift"; sourceTree = "<group>"; };
-		47200350BF39912B453234B7 /* werck it\!- video degrader（压烂它！）.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "werck it\!- video degrader（压烂它！）.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		47200350BF39912B453234B7 /* werck it!- video degrader（压烂它！）.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "werck it!- video degrader（压烂它！）.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		54957251B0FFF1ED97401D53 /* FrameSkipper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrameSkipper.swift; sourceTree = "<group>"; };
 		90084F44719CEF1AC742372C /* ProcessingParameters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessingParameters.swift; sourceTree = "<group>"; };
 		ABDF219A7554C63A47734D05 /* CVPixelBuffer+Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CVPixelBuffer+Extensions.swift"; sourceTree = "<group>"; };
@@ -125,6 +127,7 @@
 				F312034F943593BF00FE23A9 /* ContentView.swift */,
 				D5CAB71B27C107ED980C7F02 /* HauntedFilterApp.swift */,
 				D1E9CE1F9D4A873AA5768B88 /* Info.plist */,
+				2D958A0A07054B2EAF99FD93 /* Assets.xcassets */,
 				C58EDE6C893E197648BBB2F9 /* Audio */,
 				6B4329F25BE7346CF5519024 /* Engine */,
 				E2890429E77BEBB2BEF6A9DE /* Extensions */,
@@ -139,7 +142,7 @@
 		F5A56CD33F9628FF1DEAEDB4 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				47200350BF39912B453234B7 /* werck it\!- video degrader（压烂它！）.app */,
+				47200350BF39912B453234B7 /* werck it!- video degrader（压烂它！）.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -152,6 +155,7 @@
 			buildConfigurationList = 534B5456D4C742B62D85EC12 /* Build configuration list for PBXNativeTarget "HauntedFilter" */;
 			buildPhases = (
 				F7C99133B8856C5CC1963083 /* Sources */,
+				9DF5D47B20414E0CB775F6B2 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -161,7 +165,7 @@
 			packageProductDependencies = (
 			);
 			productName = HauntedFilter;
-			productReference = 47200350BF39912B453234B7 /* werck it\!- video degrader（压烂它！）.app */;
+			productReference = 47200350BF39912B453234B7 /* werck it!- video degrader（压烂它！）.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -191,6 +195,17 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		9DF5D47B20414E0CB775F6B2 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0C178D3503D06C4A80F0292B /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		F7C99133B8856C5CC1963083 /* Sources */ = {
@@ -229,6 +244,7 @@
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = SLNWS3JDUR;
 				INFOPLIST_FILE = HauntedFilter/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Wreck it - Video Degrader";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
@@ -237,8 +253,8 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.werckit.videodegrader;
-				PRODUCT_NAME = "werck it\!- video degrader（压烂它！）";
+				PRODUCT_BUNDLE_IDENTIFIER = com.waki.wreckit;
+				PRODUCT_NAME = "werck it!- video degrader（压烂它！）";
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.9;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -252,6 +268,7 @@
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = SLNWS3JDUR;
 				INFOPLIST_FILE = HauntedFilter/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Wreck it - Video Degrader";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
@@ -260,8 +277,8 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.werckit.videodegrader;
-				PRODUCT_NAME = "werck it\!- video degrader（压烂它！）";
+				PRODUCT_BUNDLE_IDENTIFIER = com.waki.wreckit;
+				PRODUCT_NAME = "werck it!- video degrader（压烂它！）";
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.9;
 				TARGETED_DEVICE_FAMILY = "1,2";
